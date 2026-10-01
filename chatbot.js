@@ -643,6 +643,7 @@ B.unknownDishes = function (c) {
     if (cov) return;
     if (out.some(function (o) { return o.indexOf(k) >= 0 || k.indexOf(o) >= 0; })) return;
     if (self.cfg.cakes && /cake/.test(k)) return;
+    if ((self.sections || []).some(function (x) { return x.w === k || x.w === k + 's'; })) return;
     out.push(k);
   });
   return out;
@@ -796,7 +797,7 @@ B.validName = function (s) {
   return titleCase(w.join(' '));
 };
 B.extractName = function (raw, awaiting) {
-  var m = /\b(?:my name is|my name's|name is|name's|names|name:|i am|i'm|im|this is|it's|its|under the name|under the name of|put it under|book it under|under|call me)\s+([A-Za-z][A-Za-z'\-]+(?:\s+[A-Za-z][A-Za-z'\-]+){0,3})/i.exec(raw);
+  var m = /\b(?:my name is|my name's|name is|name's|names|name:|name|i am|i'm|im|this is|it's|its|under the name|under the name of|put it under|book it under|under|call me)\s+([A-Za-z][A-Za-z'\-]+(?:\s+[A-Za-z][A-Za-z'\-]+){0,3})/i.exec(raw);
   if (!m) return null;
   var lead = m[0].toLowerCase(), strong = /name|under/.test(lead);
   var parts = m[1].split(/\s+/), keep = [];
@@ -1571,10 +1572,11 @@ B.answer = function (tp, c, R) {
     case 'menu': if (c.mentions.length && (c.q || /\b(have|got|serve|sell)\b/.test(c.text))) return this.answerItemExists(c, R); return this.showMenu(tp.cat, R);
     case 'price': {
       if (c.section) { var kwds = c.text.split(' ').filter(function (w) { return w.length > 3 && !/price|cost|much|your|what/.test(w); }); var fam = this.menu.items.filter(function (i) { return i.cat === c.section && kwds.some(function (w) { return i.name.toLowerCase().indexOf(w) >= 0; }); }); if (fam.length > 1) items = fam; }
+      if (!items.length && c.unknown.length) return this.answerUnknown(c, R);
       if (items.length) { R.say(cap(joinList(items.slice(0, 5).map(function (i) { return 'the ' + i.name + ' is ' + money(i.price); }))) + '.'); R.card(this.menuCard('', items.slice(0, 4))); return; }
       var ps = this.inSection(this.menu.items.filter(function (i) { return !/drink|beverage|dessert|side|kid|bread|extra|bar/i.test(i.cat) || c.section === i.cat; }), c).map(function (i) { return i.price; });
-      R.say((c.section ? 'Dishes in our ' + c.section + ' section run ' : 'Most of our dishes run ') + money(Math.min.apply(null, ps)) + '–' + money(Math.max.apply(null, ps)) + ', plus tax. Want to see the menu?');
-      if (c.section) { R.card(this.menuCard(c.section, this.menu.items.filter(function (i) { return i.cat === c.section; }))); return; } R.chips = [{ label: 'Show menu', text: 'Menu' }];
+      R.say(c.section ? 'Here are our ' + c.section + ' prices — dishes run ' + money(Math.min.apply(null, ps)) + '–' + money(Math.max.apply(null, ps)) + ', plus tax.' : 'Most of our dishes run ' + money(Math.min.apply(null, ps)) + '–' + money(Math.max.apply(null, ps)) + ', plus tax. Want to see the menu?');
+      if (c.section) { R.card(this.menuCard(c.section + ' prices', this.menu.items.filter(function (i) { return i.cat === c.section; }))); return; } R.chips = [{ label: 'Show menu', text: 'Menu' }];
       return;
     }
     case 'itemInfo': {
@@ -1785,7 +1787,7 @@ B.understand = function (raw, R) {
   var any = function (k) { return cls.some(function (c) { return c[k]; }); };
   var isQ = cls.some(function (c) { return c.q; });
   var plain = cleaned.replace(/\s+/g, ' ').trim();
-  var hasOther = cls.some(function (c) { return !c.oosUsed && (c.topic || c.unknown.length || c.mentions.length || c.allergy || c.avail || c.greet || c.thanks || c.flowKw); });
+  var hasOther = cls.some(function (c) { return c.gib || !c.oosUsed && (c.topic || c.unknown.length || c.mentions.length || c.allergy || c.avail || c.greet || c.thanks || c.flowKw); });
 
   // age: alcohol is 21+ only
   var ageM = /\b(?:i am|i'm|im|i’m|am)\s+(?:only\s+)?(\d{1,2})\b(?!\s*(?:people|guests|persons|of us|pm|am|:|kg|lb|inch|th|st|nd|rd|\/))|\b(\d{1,2})\s*(?:years? old|yrs? old|yo)\b/i.exec(raw);
@@ -1897,7 +1899,7 @@ B.understand = function (raw, R) {
       if (c.eventType || (c.occasion && c.occasion !== 'None')) { self.setF('catering', 'eventType', c.eventType || c.occasion); understood = true; }
       if (c.budget) { self.setF('catering', 'budget', c.budget); understood = true; }
     }
-    if (c.mode && S.flows.order && ctx !== 'cake' && !c.q) {
+    if (c.mode && S.flows.order && ctx !== 'cake' && (!c.q || c.reqQ)) {
       if (c.mode === 'delivery' && !self.allZips().length) { R.say(self.fill(cfg.delivery.note || "We don't offer delivery, but pickup is quick and easy.") + " I've set your order up for pickup."); self.setF('order', 'mode', 'pickup'); }
       else if (S.flows.order.mode !== c.mode) self.setF('order', 'mode', c.mode);
       understood = true;
@@ -2007,6 +2009,7 @@ B.understand = function (raw, R) {
       var ok = c.q || tp.score >= 2 || (c.stems.length <= 5 && !ent && !c.started && !freeText);
       if (c.opsOK && !c.q) ok = false;
       if (!c.q && c.seating && S.flows.reserve) ok = false;
+      if ((id === 'pickup' || id === 'delivery') && (c.reqQ || c.opsOK) && !c.zips.length) ok = false;
       if (tp.t.flow && c.started === tp.t.flow) ok = false;
       if (id === 'reservationInfo' && (c.started || !c.q && S.flows.reserve)) ok = false;
       if (id === 'contact' && /^(phone|email|both|contactPref)$/.test(aw.field || '')) ok = false;

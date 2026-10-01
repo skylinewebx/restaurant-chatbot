@@ -146,7 +146,7 @@ N.demo = {
       ['Mochi Ice Cream (3 pc)', 7.00, 'v gf', 'D', 'Green tea, mango and strawberry.', 'mochi']
     ] },
     { cat: 'Italian', items: [
-      ['Margherita Pizza', 17.00, 'v pop', 'G D', 'San Marzano tomato, fior di latte, basil and olive oil. 12" (6 slices).', 'margherita|margarita|pizza|cheese pizza'],
+      ['Margherita Pizza', 17.00, 'v pop', 'G D', 'San Marzano tomato, fior di latte, basil and olive oil. 12" (6 slices).', 'margherita|margarita pizza|pizza|cheese pizza'],
       ['Pepperoni Pizza', 19.00, 'pop', 'G D', 'Tomato, mozzarella and crispy pepperoni. 12" (6 slices).', 'pepperoni|peperoni'],
       ['Quattro Formaggi Pizza', 20.00, 'v', 'G D', 'Mozzarella, gorgonzola, fontina and parmigiano. 12".', 'four cheese|quattro formaggi'],
       ['Veggie Garden Pizza', 19.00, 'v', 'G D', 'Peppers, mushrooms, olives, red onion and spinach. 12".', 'veggie pizza|vegetable pizza'],
@@ -288,7 +288,7 @@ N.demo = {
       ['Chocolate Lava Cake', 11.00, 'v', 'G D E', 'Warm molten chocolate cake with vanilla gelato.', 'lava cake|molten cake']
     ] },
     { cat: 'Bar', items: [
-      ['Classic Margarita', 15.00, 'alc vg gf', '', 'Tequila, fresh lime and orange liqueur (21+).', 'margarita cocktail|margaritas'],
+      ['Classic Margarita', 15.00, 'alc vg gf', '', 'Tequila, fresh lime and orange liqueur (21+).', 'margarita|margaritas|margarita cocktail'],
       ['Old Fashioned', 17.00, 'alc vg gf', '', 'Bourbon, bitters and orange (21+).', 'old fashioned'],
       ['Mojito', 14.00, 'alc vg gf', '', 'White rum, mint, lime and soda (21+).', 'mojito'],
       ['Espresso Martini', 16.00, 'alc vg gf', '', 'Vodka, fresh espresso and coffee liqueur (21+).', 'espresso martini|martini'],
