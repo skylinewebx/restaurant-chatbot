@@ -1,0 +1,15 @@
+[build]
+  publish = "."
+  command = ""
+
+[[headers]]
+  for = "/chatbot.js"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Cache-Control = "public, max-age=300"
+
+[[headers]]
+  for = "/niches.js"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Cache-Control = "public, max-age=300"

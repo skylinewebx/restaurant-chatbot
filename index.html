@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Demo Chatbot for Restaurants</title>
+<meta name="description" content="AI chatbot demo for restaurants: menu, prices, hours, table reservations, pickup and delivery orders, and catering requests.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@600;700&display=swap">
+<style>
+  :root { --cream:#FFF8EE; --tomato:#E63946; --orange:#F4A261; --mustard:#E9C46A; --basil:#2A9D8F; --ink:#2B2B2B; --muted:#7A6E63; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100%; }
+  body { background: var(--cream); color: var(--ink); font-family: "DM Sans", system-ui, sans-serif; font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  .bg { position: fixed; inset: 0; z-index: -1; background-color: var(--cream); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 48px 16px 140px; }
+  .hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; max-width: 520px; }
+  .badge { display: inline-flex; align-items: center; gap: 8px; align-self: start; width: max-content; max-width: 100%; padding: 6px 12px; border-radius: 999px; background: #fff; border: 1px solid var(--mustard); font-size: 13px; font-weight: 500; color: var(--muted); }
+  .logo { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, var(--tomato), var(--orange)); box-shadow: 0 10px 24px rgba(230,57,70,.25); }
+  h1 { font-family: "Playfair Display", Georgia, serif; font-weight: 700; font-size: clamp(32px, 6vw, 48px); line-height: 1.1; letter-spacing: -.5px; }
+  h1 span { color: var(--tomato); }
+  .lead { color: var(--muted); font-size: 17px; max-width: 46ch; }
+  .facts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .fact { background: #fff; border: 1px solid #F0E2C4; border-radius: 12px; padding: 8px 12px; font-size: 14px; }
+  .fact b { color: var(--basil); font-weight: 700; }
+  .try { margin-top: 8px; }
+  .try h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 10px; font-weight: 700; }
+  .samples { display: flex; flex-wrap: wrap; gap: 8px; }
+  .samples button { font: inherit; font-size: 14px; min-height: 40px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--mustard); background: #fff; color: var(--ink); cursor: pointer; transition: .2s; }
+  .samples button:hover { border-color: var(--tomato); color: var(--tomato); }
+  .open { justify-self: start; display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 12px 22px; border-radius: 999px; border: 0; background: var(--tomato); color: #fff; font: inherit; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px rgba(230,57,70,.25); }
+  footer { margin-top: 40px; font-size: 13px; color: var(--muted); }
+  @media (max-width: 559px) { .wrap { padding-top: 28px; } }
+</style>
+</head>
+<body>
+<div class="bg" id="bg"></div>
+<main class="wrap">
+  <section class="hero">
+    <div class="logo" id="logo" aria-hidden="true"></div>
+    <span class="badge" id="badge">Live demo · AI assistant</span>
+    <h1 id="title">Demo Chatbot <span>for Restaurants</span></h1>
+    <p class="lead" id="lead">Ask about the menu, prices and opening hours, book a table, or order for pickup and delivery — the assistant answers in seconds.</p>
+    <div class="facts" id="facts"></div>
+    <button class="open" id="openChat" type="button">Open the chat</button>
+    <div class="try">
+      <h2>Try asking</h2>
+      <div class="samples" id="samples"></div>
+    </div>
+    <footer id="foot">Built by Skyline Web Co. All restaurants, menus and contact details in this demo are fictional.</footer>
+  </section>
+</main>
+
+<script src="niches.js"></script>
+<script src="chatbot.js"></script>
+<script>
+(function () {
+  var p = new URLSearchParams(location.search);
+  var N = window.FOOD_NICHES || {};
+  var id = (p.get('niche') || 'demo').toLowerCase();
+  if (!N[id]) id = 'demo';
+  var name = p.get('name'), city = p.get('city'), phone = p.get('phone');
+  var cfg = FoodChatbot.resolveConfig(N[id], { name: name, city: city, phone: phone });
+  var isDemo = id === 'demo';
+
+  document.title = isDemo ? cfg.name : cfg.name + ' – AI Assistant';
+  document.getElementById('bg').style.backgroundImage = FoodChatbot.patternURI(0.07);
+  document.getElementById('logo').innerHTML = FoodChatbot.icon(isDemo ? 'plate' : cfg.icon, 34, 1.7);
+  if (!isDemo) {
+    var t = document.getElementById('title'); t.textContent = cfg.name;
+    document.getElementById('badge').textContent = cfg.cuisine + ' · ' + cfg.city;
+    document.getElementById('lead').textContent = cfg.tagline;
+  }
+  var facts = [
+    ['Hours', isDemo ? 'Mon–Sat, 11 AM–11 PM' : 'See chat for today'],
+    ['Where', cfg.street + ', ' + cfg.city],
+    ['Call', cfg.phone]
+  ];
+  document.getElementById('facts').innerHTML = facts.map(function (f) { return '<span class="fact"><b>' + f[0] + '</b> ' + f[1].replace(/</g, '&lt;') + '</span>'; }).join('');
+
+  var samples = isDemo
+    ? ['Biryani price?', 'Do you have ramen?', 'Happy hour prices', 'Vegan options for kids', 'Table for 4 Saturday at 8pm', '2 chicken biryani and 1 margherita for pickup']
+    : ['Show me the menu', "What's your best dish?", 'Book a table for 2 tomorrow at 7pm', 'Do you deliver to ' + cfg.zip + '?'];
+
+  var w = FoodChatbot.mount({ niche: id, name: name, city: city, phone: phone, open: true });
+  var box = document.getElementById('samples');
+  samples.forEach(function (s) {
+    var b = document.createElement('button'); b.type = 'button'; b.textContent = s;
+    b.addEventListener('click', function () { if (w) { w.open(); w.sendText(s, true); } });
+    box.appendChild(b);
+  });
+  document.getElementById('openChat').addEventListener('click', function () { if (w) w.open(); });
+})();
+</script>
+</body>
+</html>
