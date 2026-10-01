@@ -260,6 +260,7 @@ Reply.prototype.card = function (c) { if (c) this.cards.push(c); };
 Reply.prototype.done = function () {
   var b = this.b, bubbles = [];
   if (this.silent) return { bubbles: [], events: this.events };
+  if (this.hoursOnly) return { bubbles: [{ text: this.hoursOnly, cards: [], chips: [] }], events: this.events };
   var parts = this.ans.concat(this.acks, this.errs);
   if (this.q) parts.push(this.q);
   if (!parts.length && !this.cards.length && !this.after.length) {
@@ -272,7 +273,7 @@ Reply.prototype.done = function () {
 };
 
 var FLOW_FIELDS = {
-  reserve: ['guests', 'date', 'time', 'seating', 'occasion', 'note'],
+  reserve: ['date', 'time', 'guests', 'seating', 'occasion', 'note'],
   order: ['items', 'mode', 'address', 'time'],
   cake: ['flavor', 'size', 'message', 'date', 'time'],
   catering: ['date', 'guests', 'eventType', 'budget', 'interests'],
@@ -495,7 +496,7 @@ B.parseGuests = function (t, ctx, awaiting) {
     if (k && /adult/.test(m[2])) n += +k[1];
   }
   else if ((m = /\b(table|tables|reservation|booking|seating|room|space|party|group|family|dinner|lunch|brunch|breakfast|event|catering|cater|food) (for|of) (\d{1,4})\b(?!\s*(am|pm|:|oclock|ish|kg|lb|inch|dollars|usd|minutes|mins|hours|%|th\b|st\b|nd\b|rd\b))/.exec(t))) n = +m[3];
-  else if ((m = /\bfor (\d{1,4})\b(?!\s*(am|pm|:|oclock|ish|kg|lb|inch|dollars|usd|minutes|mins|hours|%|th\b|st\b|nd\b|rd\b|\/))/.exec(t)) && ctx) n = +m[1];
+  else if ((m = /\bfor (\d{1,4})\b(?!\s*(st |nd |rd |th )?(of )?(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)|\s*(am|pm|:|oclock|ish|kg|lb|inch|dollars|usd|minutes|mins|hours|%|th\b|st\b|nd\b|rd\b|\/))/.exec(t)) && ctx) n = +m[1];
   else if (/\b(just me|only me|myself|table for one|party of one|just one person)\b/.test(t)) n = 1;
   else if (/\b(2 of us|the 2 of us|me and my \w+|my (wife|husband|partner|girlfriend|boyfriend|fiance|fiancee|date) and (i|me)|me and (her|him))\b/.test(t)) n = 2;
   else if (awaiting && (m = /^(\d{1,4})( total)?$/.exec(t.trim()))) n = +m[1];
@@ -920,6 +921,8 @@ B.setF = function (flow, field, val) {
   T.set[flow] = T.set[flow] || [];
   if (T.set[flow].indexOf(field) < 0) T.set[flow].push(field);
   if (old != null && old !== '' && JSON.stringify(old) !== JSON.stringify(val) && !(field === 'time' && old && old.tentative)) T.changed.push({ flow: flow, field: field });
+  else if (S.editing && S.editing.flow === flow && S.editing.field === field) T.changed.push({ flow: flow, field: field });
+  if (S.editing && S.editing.flow === flow && S.editing.field === field) S.editing = null;
   if (S.errors[field]) S.errors[field] = 0;
 };
 B.firstMissing = function () {
@@ -930,7 +933,7 @@ B.firstMissing = function () {
     for (var i = 0; i < fl.length; i++) {
       var k = fl[i];
       if (f === 'reserve' && k === 'seating') { if (F.seating == null && ((cfg.seating && cfg.seating.options) || []).length < 2) F.seating = 'any'; if (F.seating == null) return { flow: f, field: k }; continue; }
-      if (f === 'reserve' && k === 'note') { if (/Birthday|Anniversary|Proposal|Engagement|Graduation|Celebration/.test(F.occasion || '') && F.note == null) return { flow: f, field: 'note' }; continue; }
+      if (f === 'reserve' && k === 'note') { if (cfg.noteOffer !== false && /Birthday|Anniversary|Proposal|Engagement|Graduation|Celebration/.test(F.occasion || '') && F.note == null) return { flow: f, field: 'note' }; continue; }
       if (f === 'order' && k === 'items') { if (!F.items.length) return { flow: f, field: k }; continue; }
       if (f === 'order' && k === 'mode' && F.mode == null && !this.allZips().length) F.mode = 'pickup';
       if (f === 'order' && k === 'address') { if (F.mode !== 'delivery') continue; if (!F.zip && F.address) return { flow: f, field: 'zip' }; if (!F.address) return { flow: f, field: 'address' }; continue; }
@@ -976,8 +979,19 @@ var ERR_AGAIN = {
   address: ['I still need a street address with the building number — like "350 5th Ave, Apt 4B".', "Sorry, I couldn't find a street address in that. Could you try again with the number and street?", "Hmm, that doesn't look like an address yet — number, street and apartment, please."],
   size: ["We only make the sizes below — which one works?", "Sorry, that size isn't available. Pick one of these?", "Our sizes are listed below — which would you like?"]
 };
+B.hoursRuleLine = function (kind, key) {
+  var cfg = this.cfg, self = this;
+  var closed = DAY_KEYS.map(function (k, i) { return self.hours[k].length ? null : DAY_FULL[i] + 's'; }).filter(Boolean);
+  var line = this.fill(cfg.hoursLine || '');
+  if (kind === 'day') {
+    var day = key ? DAY_FULL[kdate(key).getDay()] + 's' : joinList(closed);
+    return this.pick('hrsDay', ["Sorry, we're closed on " + day + '. ' + line, "We're closed on " + day + ", I'm afraid. " + line]);
+  }
+  return this.pick('hrsTime', ["Sorry, that's outside our opening hours. " + line, "Sorry, we're not open at that time. " + line]);
+};
 B.err = function (field, code, R, x) {
   var S = this.state, cfg = this.cfg; x = x || {};
+  if (cfg.hoursRule && code === 'closed' && (field === 'date' || field === 'time')) { R.hoursOnly = this.hoursRuleLine(field === 'date' ? 'day' : 'time', x.key); R.errField = field; return false; }
   var n = (S.errors[field] || 0) + 1; S.errors[field] = n;
   var msg;
   if (n === 1) {
@@ -1037,7 +1051,7 @@ B.setDate = function (flow, res, R) {
   var openDays = DAY_KEYS.map(function (k, i) { return self.hours[k].length ? DAY_SHORT[i] : null; }).filter(Boolean);
   var closedMsg = "We're closed on " + day + 's, I\'m afraid. Could you pick another day? We\'re open ' + joinList(openDays) + '.';
   if (flow === 'reserve' || flow === 'order') {
-    if (!this.dayRanges(key).length) return this.err('date', 'closed', R, { msg: closedMsg, chips: this.dateChips(flow) });
+    if (!this.dayRanges(key).length) return this.err('date', 'closed', R, { key: key, msg: closedMsg, chips: this.dateChips(flow) });
     if (diff > (flow === 'order' ? 7 : 90)) return this.err('date', 'far', R, { msg: flow === 'order' ? 'We take orders up to a week ahead — could you pick an earlier day?' : null, chips: this.dateChips(flow) });
     if (flow === 'reserve' && diff === 0 && !this.freeSlots(key).length) return this.err('date', 'full', R, { msg: (this.slots(key).some(function (t) { return self.future(key, t); }) ? "We're fully booked for the rest of today, sorry!" : "We're past our last seating for today.") + ' Would another day work?', chips: this.dateChips(flow, dkey(addDays(d, 1))) });
     if (flow === 'reserve' && !this.freeSlots(key).length) return this.err('date', 'full', R, { msg: "We're fully booked on " + fmtDate(key) + ', sorry! Could another day work?', chips: this.dateChips(flow, dkey(addDays(d, 1))) });
@@ -1046,10 +1060,10 @@ B.setDate = function (flow, res, R) {
     var lead = flow === 'event' ? ((cfg.events && cfg.events.lead) || 2) : ((cfg.catering && cfg.catering.lead) || 3);
     if (diff < lead) { var e = dkey(addDays(sod(this.now), lead)); return this.err('date', 'notice', R, { msg: (flow === 'event' ? 'Private events' : 'Catering orders') + ' need at least ' + lead + " days' notice, so " + (diff === 0 ? 'today' : diff === 1 ? 'tomorrow' : fmtDate(key)) + ' is a little too soon. The earliest I can do is ' + fmtDate(e) + ' — would that work?', chips: this.dateChips(flow, e, 4) }); }
     if (diff > 365) return this.err('date', 'far', R, { msg: 'We book events up to a year ahead — could you choose a date before ' + fmtDate(addDays(sod(this.now), 365)) + '?' });
-    if (flow === 'event' && !this.dayRanges(key).length) return this.err('date', 'closed', R, { msg: closedMsg });
+    if (flow === 'event' && !this.dayRanges(key).length) return this.err('date', 'closed', R, { key: key, msg: closedMsg });
   }
   if (flow === 'cake') {
-    if (!this.dayRanges(key).length) return this.err('date', 'closed', R, { msg: closedMsg, chips: this.dateChips('cake', this.cakeEarliest(), 4) });
+    if (!this.dayRanges(key).length) return this.err('date', 'closed', R, { key: key, msg: closedMsg, chips: this.dateChips('cake', this.cakeEarliest(), 4) });
     var earliest = this.cakeEarliest();
     if (key < earliest) { var ready = this.cfg.cakes.readyMade ? ' ' + this.cfg.cakes.readyMade : ''; return this.err('date', 'notice', R, { msg: "Custom cakes need at least 48 hours' notice, so " + (diff === 0 ? 'today' : diff === 1 ? 'tomorrow' : fmtDate(key)) + ' is a little too soon. The earliest pickup I can offer is ' + fmtDate(earliest) + ' — would that work?' + ready, chips: this.dateChips('cake', earliest, 4) }); }
     if (diff > 90) return this.err('date', 'far', R, { chips: this.dateChips('cake', earliest, 4) });
@@ -1102,7 +1116,7 @@ B.setTime = function (flow, mins, R, recheck) {
     return;
   }
   this.setF(flow, 'time', r.mins);
-  if (!recheck) this.T.timeOk = flow;
+  this.T.timeOk = flow;
 };
 B.setGuests = function (flow, n, R) {
   var S = this.state, cfg = this.cfg;
@@ -1218,7 +1232,7 @@ B.askField = function (m, R) {
     q = asap ? 'When would you like it? ASAP is about ' + (F.mode === 'delivery' ? d.time : d.pickup) + ', or pick a later time:' : "We're closed right now, so let's schedule it — which time works for you?";
   } else if (key === 'reserve.seating') {
     var opts = cfg.seating.options;
-    q = opts.indexOf('outdoor') >= 0 ? this.pick('ask:seat', ['Would you prefer indoor or outdoor seating?', 'Inside or out on the patio — any preference?']) : 'Any seating preference?';
+    q = opts.length > 3 ? 'Where would you like to sit — indoors, on the ' + (cfg.seating.outdoorLabel || 'patio').toLowerCase().replace(/^outdoor /, '') + ', at the bar, or in our private dining room?' : opts.indexOf('outdoor') >= 0 ? this.pick('ask:seat', ['Would you prefer indoor or outdoor seating?', 'Inside or out on the patio — any preference?']) : 'Any seating preference?';
     chips = opts.map(function (o) { return { label: o === 'outdoor' ? (cfg.seating.outdoorLabel || 'Outdoor') : SEAT_LABEL[o], action: { type: 'set', flow: 'reserve', field: 'seating', value: o } }; }).concat([{ label: 'No preference', action: { type: 'set', flow: 'reserve', field: 'seating', value: 'any' } }]);
   } else if (key === 'reserve.note' && F.noteWanted) {
     q = 'What would you like the note to say?';
@@ -1232,6 +1246,7 @@ B.askField = function (m, R) {
     chips = ct.slice(0, 8).map(function (t) { return { label: fmtT(t), action: { type: 'set', flow: 'cake', field: 'time', value: t } }; });
   } else {
     var pool = ASK[key] || ASK['*.' + m.field] || ['Could you tell me the ' + m.field + '?'];
+    if (key === 'catering.interests' && cfg.catering && cfg.catering.interestsQ) pool = [cfg.catering.interestsQ];
     if (m.field === 'name' && S.active.length === 1 && S.active[0] === 'order') pool = ['What name should we put on the order?', 'And what name is the order under?'];
     q = this.pick('ask:' + key, pool).replace('{sig}', this.signature().slice(0, 2).map(function (i) { return i.name.toLowerCase(); }).join(' and '));
     if (key === 'reserve.guests') chips = ['2', '3', '4', '6'].map(function (n) { return { label: n, text: n }; });
@@ -1248,11 +1263,11 @@ B.askField = function (m, R) {
     if (key === 'catering.interests') chips = [{ label: "Chef's choice", action: { type: 'set', flow: 'catering', field: 'interests', value: "Chef's choice" } }].concat(this.signature().slice(0, 3).map(function (i) { return { label: i.name, action: { type: 'set', flow: 'catering', field: 'interests', value: i.name } }; }));
     if (m.field === 'contactPref') chips = ['Phone', 'Email', 'Both'].map(function (o) { return { label: o, text: o.toLowerCase() }; });
   }
-  if (R.ans.length && q && !R.errs.length) q = this.pick('bridge', ['Now, ', 'Back to your ' + this.flowNoun() + ' — ', 'Meanwhile, ']) + lc1(q);
+  if (R.ans.length && q && !R.errs.length) q = this.pick('bridge', ['Now, ', 'Back to your ' + this.flowNoun(m.flow) + ' — ', 'Meanwhile, ']) + lc1(q);
   if (T.clarify) return;
   R.q = q; if (chips) R.chips = chips;
 };
-B.flowNoun = function () { var S = this.state; var f = S.active[S.active.length - 1]; return { reserve: 'booking', order: 'order', cake: 'cake order', catering: 'catering request', event: 'event inquiry' }[f] || 'booking'; };
+B.flowNoun = function (fl) { var S = this.state; var f = fl && fl !== '*' ? fl : S.active[S.active.length - 1]; return { reserve: 'booking', order: 'order', cake: 'cake order', catering: 'catering request', event: 'event inquiry' }[f] || 'booking'; };
 B.example = function () {
   var sig = this.signature(), a = sig[0] || this.menu.items[0], drinks = this.menu.items.filter(function (i) { return /drink|beverage|shake|lassi|tea|coffee/i.test(i.cat); }), b = drinks[0] || sig[1] || this.menu.items[1];
   return '2 ' + a.name.toLowerCase() + ' and 1 ' + b.name.toLowerCase();
@@ -1289,6 +1304,7 @@ B.fieldLabel = function (flow, field) {
   return ({ guests: 'guests', date: 'date', time: 'time', seating: 'seating', occasion: 'occasion', note: 'note', mode: 'pickup/delivery', address: 'address', zip: 'ZIP', flavor: 'flavor', size: 'size', message: 'message', eventType: 'event type', budget: 'budget', interests: 'menu interests' })[field] || field;
 };
 B.fieldValue = function (flow, field) {
+  if (flow === '*') return this.state.customer[field] || '';
   var F = this.state.flows[flow], v = F && F[field], cfg = this.cfg;
   if (v == null) return '';
   if (field === 'date') return fmtDate(v);
@@ -1367,7 +1383,7 @@ B.section = function (f) {
     return { title: F.mode === 'delivery' ? 'Delivery order' : 'Pickup order', rows: rows, lines: t.lines, subtotal: t.subtotal, tax: t.tax, fee: t.fee, total: t.total };
   }
   if (f === 'cake') { row('flavor', 'Flavor'); row('size', 'Size'); rows.push(['Message', F.message ? '"' + F.message + '"' : 'No message']); row('date', 'Pickup date'); row('time', 'Pickup time'); var s = cfg.cakes.sizes.filter(function (x) { return x.key === F.size; })[0]; if (s) rows.push(['Price', money(s.price) + ' (pay at pickup)']); return { title: 'Custom cake', rows: rows }; }
-  if (f === 'catering') { row('date', 'Event date'); row('guests', 'Guests'); row('eventType', 'Event'); row('budget', 'Budget'); row('interests', 'Menu interests'); return { title: 'Catering request', rows: rows }; }
+  if (f === 'catering') { row('date', 'Event date'); row('guests', 'Guests'); row('eventType', 'Event'); row('budget', 'Budget'); row('interests', 'Cuisines / menu'); return { title: 'Catering request', rows: rows }; }
   if (f === 'event') { row('date', 'Date'); row('guests', 'Guests'); row('time', 'Start time'); row('occasion', 'Occasion'); return { title: 'Private event inquiry', rows: rows }; }
 };
 B.contactRows = function () { var C = this.state.customer, rows = [['Name', C.name]]; if (C.phone) rows.push(['Phone', C.phone]); if (C.email) rows.push(['Email', C.email]); return rows; };
@@ -1395,20 +1411,21 @@ B.confirm = function (R) {
   recs.forEach(function (r) { S.done.push({ type: r.type, ref: r.ref, line: r.line, status: 'confirmed' }); R.events.push(r); });
   var how = C.phone && C.email ? "We'll call or email you to confirm." : C.phone ? "We'll call you at " + C.phone + ' to confirm.' : "We'll email you at " + C.email + ' to confirm.';
   var types = recs.map(function (r) { return r.type; });
-  var extra = types.indexOf('catering') >= 0 ? ' Our catering manager will send you a quote.' : '';
-  var wish = (types.indexOf('reserve') >= 0 || types.indexOf('order') >= 0) ? this.pick('wish', ['Enjoy your meal! 😊', 'Enjoy your meal — see you soon! 😊']) : types.indexOf('cake') >= 0 ? 'Have a sweet celebration! 🎂' : "We can't wait to help make it special! 😊";
+  var extra = types.indexOf('catering') >= 0 ? ' ' + ((this.cfg.catering && this.cfg.catering.closing) || 'Our catering manager will send you a quote.') : '';
+  var wish = this.dayWish();
   var text = this.pick('close', ['All set', 'Wonderful', "You're all set", 'Perfect']) + (first ? ', ' + first : '') + '! ' + cap(joinList(recs.map(function (r) { return r.line; }))) + '.' + extra + ' ' + how + ' ' + wish;
   R.card({ type: 'confirmed', records: recs.map(function (r) { return { title: r.title, ref: r.ref, rows: r.rows, lines: r.lines, total: r.total, ics: r.ics }; }) });
   R.ans = [text]; R.acks = []; R.errs = []; R.q = null; R.chips = [];
   S.flows = {}; S.active = []; S.review = false; S.awaiting = null;
-  R.after.push({ text: 'Is there anything else I can help you with?', cards: [], chips: [] });
+  R.after.push({ text: 'Anything else I can help with?', cards: [], chips: [] });
   S.pending = { type: 'anything_else' };
   this.T.noNext = true;
 };
+B.dayWish = function () { var h = this.now.getHours(); return h < 12 ? 'Have a great day! 😊' : h < 17 ? 'Have a lovely afternoon! 😊' : 'Enjoy your evening! 😊'; };
 B.goodbye = function (R) {
-  var S = this.state, first = this.first();
-  var t = this.pick('bye', ['Thanks for chatting with us', 'It was a pleasure helping you', 'Thanks so much']) + (first ? ', ' + first : '') + '! ' + this.pick('bye2', ['Have a wonderful day! 👋', 'See you soon! 👋', 'Take care! 👋']);
-  if (S.active.length) t = 'No problem! Just so you know, your ' + this.flowNoun() + " isn't placed yet — message me anytime to finish it. " + this.pick('bye2', ['Have a wonderful day! 👋', 'Take care! 👋']);
+  var S = this.state, first = this.first(), w = this.dayWish().replace(' 😊', ' 👋');
+  var t = this.pick('bye', ['Thanks for chatting with us', 'It was a pleasure helping you', 'Thanks so much']) + (first ? ', ' + first : '') + '! ' + w;
+  if (S.active.length) t = 'No problem! Just so you know, your ' + this.flowNoun() + " isn't placed yet — message me anytime to finish it. " + w;
   R.ans = [t]; R.q = null; R.chips = [];
   S.ended = true; S.pending = null; S.awaiting = null;
   this.T.noNext = true;
@@ -1475,7 +1492,7 @@ B.answer = function (tp, c, R) {
         R.say(o ? 'Yes, we\'re open right now until ' + fmtT(o.r[1]) + '!' : "We're closed right now — we open again " + this.nextOpen() + '.');
         return;
       }
-      R.say(this.pick('hrs', ["Here are our opening hours:", 'Our hours are below —']) + (cfg.hoursNote ? ' ' + cfg.hoursNote : ''));
+      R.say(cfg.hoursNote ? this.fill(cfg.hoursNote) : this.pick('hrs', ['Here are our opening hours:', 'Our hours are below:']));
       R.card({ type: 'info', title: 'Opening hours', rows: this.hoursRows() });
       return;
     }
@@ -1639,7 +1656,7 @@ B.answerAvail = function (c, R) {
   if (c.date && c.date.err) { this.err('date', c.date.err, R); return; }
   var key = (c.date && c.date.key) || (S.flows.reserve && S.flows.reserve.date) || dkey(this.now);
   var per = c.period || (c.date && c.date.night ? 'evening' : null);
-  if (!this.dayRanges(key).length) { R.say("We're closed on " + DAY_FULL[kdate(key).getDay()] + 's — we open again ' + this.nextOpen() + '.'); return; }
+  if (!this.dayRanges(key).length) { if (cfg.hoursRule) { R.hoursOnly = this.hoursRuleLine('day', key); return; } R.say("We're closed on " + DAY_FULL[kdate(key).getDay()] + 's — we open again ' + this.nextOpen() + '.'); return; }
   var free = this.freeSlots(key);
   var win = per && { morning: [0, 720], afternoon: [720, 1020], evening: [1020, 1320], late: [1260, 3000] }[per];
   var inWin = win ? free.filter(function (t) { return t >= win[0] && t < win[1]; }) : free;
@@ -1697,11 +1714,12 @@ B.setZip = function (zip, R) {
 };
 B.setName = function (nm) {
   var C = this.state.customer;
-  if (C.name && C.name !== nm) this.T.changed.push({ flow: '*', field: 'name' });
+  if ((C.name && C.name !== nm) || (this.state.editing && this.state.editing.field === 'name')) { this.T.changed.push({ flow: '*', field: 'name' }); this.state.editing = null; }
   C.name = nm; this.T.nameSet = true; this.state.errors.name = 0;
 };
 B.clearField = function (flow, field, R) {
   var S = this.state, C = S.customer, F = S.flows[flow];
+  S.editing = { flow: flow, field: field };
   if (flow === '*') { if (field === 'name') C.name = null; else { C.phone = null; C.email = null; C.pref = null; } }
   else if (F) {
     if (flow === 'order' && field === 'items') { R.say('Sure — tell me what to add or remove, like "remove the ' + (F.items[0] ? this.menu.byId[F.items[0].id].name.toLowerCase() : 'drink') + '" or "add 2 more".'); R.card(this.cartCard()); this.T.noNext = true; S.review = false; S.awaiting = { flow: 'order', field: 'items' }; return; }
@@ -1916,6 +1934,11 @@ B.understand = function (raw, R) {
     else if (!understood && !isQ && !hasOther) { this.err('name', 'bad', R); understood = true; }
   }
 
+  if (!C.name && !nameX && !understood && aw.field !== 'name' && S.active.length && !isQ && cls.length === 1 && !cls[0].topic && !cls[0].mentions.length) {
+    var nm2 = this.validName(plain.replace(/\b(it's|its|it is|i am|i'm|im|this is|my name is)\b/ig, ' ').trim());
+    if (nm2 && plain.split(/\s+/).length <= 3) { this.setName(nm2); understood = true; if (aw.flow === 'reserve' && aw.field === 'occasion' && S.flows.reserve) S.flows.reserve.occasion = 'None'; }
+  }
+  if (!C.pref && !understood && S.active.length && /^(phone|email|both|call|text|e mail|mail)( please| is fine| works)?$/.test(plain.toLowerCase())) { C.pref = /both/.test(plain.toLowerCase()) ? 'both' : /mail/.test(plain.toLowerCase()) ? 'email' : 'phone'; understood = true; }
   // 4) free-text answers to the question we just asked
   if (aw.flow && S.flows[aw.flow]) {
     var F = S.flows[aw.flow], c0 = cls[0] || {};
@@ -1953,6 +1976,7 @@ B.understand = function (raw, R) {
         break;
       case 'occasion':
         if (aw.flow === 'event' && F.occasion == null && !isQ && plain.split(' ').length <= 6) { this.setF('event', 'occasion', titleCase(plain)); understood = true; }
+        else if (aw.flow === 'reserve' && F.occasion == null && !isQ && !understood && plain.split(' ').length <= 4 && !cls.some(function (c) { return c.topic || c.mentions.length || c.gib || c.oos; })) { this.setF('reserve', 'occasion', titleCase(plain)); understood = true; }
         break;
       case 'budget':
         if (F.budget == null && !isQ && /\d|flexible|not sure|no idea/i.test(plain)) { this.setF('catering', 'budget', plain.slice(0, 40)); understood = true; }
@@ -1982,6 +2006,7 @@ B.understand = function (raw, R) {
       var ent = !!(c.date || c.time || c.guests || c.opsOK || c.zips.length || (c.seating && S.flows.reserve));
       var ok = c.q || tp.score >= 2 || (c.stems.length <= 5 && !ent && !c.started && !freeText);
       if (c.opsOK && !c.q) ok = false;
+      if (!c.q && c.seating && S.flows.reserve) ok = false;
       if (tp.t.flow && c.started === tp.t.flow) ok = false;
       if (id === 'reservationInfo' && (c.started || !c.q && S.flows.reserve)) ok = false;
       if (id === 'contact' && /^(phone|email|both|contactPref)$/.test(aw.field || '')) ok = false;
