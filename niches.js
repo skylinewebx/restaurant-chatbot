@@ -44,8 +44,8 @@ N.demo = {
   glutenFree: 'Many dishes are naturally gluten-free and tagged GF, and we have gluten-free pizza and pasta.',
   spice: 'Spicy dishes are tagged on the menu, and most kitchens can make dishes mild, medium or extra spicy on request.',
   allergens: 'wheat, dairy, egg, tree nuts, peanuts, soy, sesame, fish and shellfish',
-  best: 'Our best sellers are the Chicken Biryani, the Margherita pizza, the Spicy Tuna Roll and the 12 oz Ribeye — and the Smash Burger is a crowd favorite.',
-  signature: ['Chicken Biryani'],
+  best: 'Our best sellers are the Chicken Biryani, the Margherita Pizza, the Spicy Tuna Roll and the 12 oz Ribeye — and the Classic Smash Burger is a crowd favorite.',
+  signature: ['Chicken Biryani', 'Margherita Pizza', 'Spicy Tuna Roll', 'Ribeye (12 oz)', 'Classic Smash Burger'],
   catering: { min: 20, max: 500, lead: 4, text: 'Yes! Our events team caters weddings, office lunches and parties for 20–500 guests with any mix of cuisines, from about $20–$75 per guest.', closing: 'Our events team will send you a quote.', interestsQ: 'Which cuisines would you like on the menu? (e.g. "Desi and Italian", or "chef\'s choice")' },
   noCakes: "We don't bake custom celebration cakes, but you're welcome to bring your own — there's a $2 per guest plating fee.",
   sections: {
@@ -56,7 +56,18 @@ N.demo = {
     'Japanese & Sushi': 'japanese|japan|sushi|ramen|sashimi|japanese food',
     'Italian': 'italian|italy|pizza|pasta|pizzeria|italian food',
     'French': 'french|france|bistro|french food',
-    'American & English': 'american|english|british|comfort food|american food|english food'
+    'American & English': 'american|english|british|comfort food|american food|english food',
+    'Steakhouse': 'steakhouse|steak|steaks',
+    'BBQ & Grill': 'bbq|barbecue|grill|grilled|smoked|smokehouse',
+    'Burgers & Fast Food': 'burgers|fast food|burger joint',
+    'Mexican': 'mexican|mexico|tex mex|mexican food',
+    'Middle Eastern': 'middle eastern|lebanese|arabic|arab|turkish|mediterranean|middle east',
+    'Seafood': 'seafood|sea food|shellfish|fish dishes',
+    'Cafe & Coffee': 'cafe|coffee|breakfast|brunch|coffee shop',
+    'Bakery & Desserts': 'bakery|dessert|desserts|sweets|pastries|pastry|sweet',
+    'Bar': 'bar|cocktail|cocktails|alcohol|alcoholic|happy hour|mocktail|mocktails|spirits|liquor|bar menu|drinks menu',
+    'Drinks': 'soft drinks|soft drink|juices|beverages|non alcoholic',
+    'Kids': 'kids menu|children menu|kid menu'
   },
   menu: [
     { cat: 'Desi', items: [
@@ -175,6 +186,141 @@ N.demo = {
       ['Club Sandwich', 16.00, '', 'G E', 'Turkey, bacon, lettuce and tomato triple-decker with fries.', 'club|club sandwich|sandwich'],
       ['Apple Pie à la Mode', 9.00, 'v', 'G D E', 'Warm apple pie with vanilla ice cream.', 'apple pie|pie'],
       ['Sticky Toffee Pudding', 10.00, 'v', 'G D E', 'Warm date sponge with toffee sauce and custard.', 'sticky toffee|toffee pudding']
+    ] },
+    { cat: 'Steakhouse', items: [
+      ['Ribeye (12 oz)', 46.00, 'gf pop', 'D', 'USDA Prime ribeye, char-grilled, with herb butter.', 'ribeye|rib eye'],
+      ['Filet Mignon (8 oz)', 52.00, 'gf', 'D', 'The most tender cut, with red wine jus.', 'filet|filet mignon|fillet|tenderloin'],
+      ['New York Strip (14 oz)', 48.00, 'gf', 'D', 'Bold, beefy strip loin with peppercorn sauce.', 'strip|ny strip|new york strip|sirloin'],
+      ['Porterhouse for Two (32 oz)', 98.00, 'gf', 'D', 'Dry-aged porterhouse, sliced tableside, with two sides.', 'porterhouse|steak for two'],
+      ['Halal Ribeye (12 oz)', 48.00, 'h gf', '', 'Zabiha halal ribeye, grilled with garlic and rosemary.', 'halal steak|halal ribeye'],
+      ['Surf & Turf', 64.00, 'gf', 'SH D', '8 oz filet with a butter-poached lobster tail.', 'surf and turf|surf n turf'],
+      ['Wedge Salad', 13.00, 'gf', 'D E', 'Iceberg, blue cheese, bacon and tomato.', 'wedge|wedge salad'],
+      ['Creamed Spinach', 9.00, 'v gf', 'D', 'Classic steakhouse side.', 'creamed spinach|spinach'],
+      ['Truffle Mashed Potatoes', 10.00, 'v gf', 'D', 'Buttery mash with black truffle.', 'mashed potatoes|mash|truffle mash'],
+      ['Grilled Asparagus', 10.00, 'vg gf', '', 'With lemon and sea salt.', 'asparagus']
+    ] },
+    { cat: 'BBQ & Grill', items: [
+      ['Smoked Brisket (1/2 lb)', 18.99, 'gf pop', '', 'Prime brisket smoked 14 hours over oak and hickory.', 'brisket'],
+      ['St. Louis Ribs (half rack)', 21.99, 'gf', '', 'Pork spare ribs with a sweet-pepper rub and BBQ glaze.', 'ribs|pork ribs|half rack'],
+      ['Pulled Pork Sandwich', 14.99, '', 'G', 'Hand-pulled pork shoulder with slaw on a brioche bun.', 'pulled pork|pork sandwich'],
+      ['Smoked Half Chicken', 17.99, 'gf', '', 'Brined and hickory-smoked half chicken.', 'smoked chicken|half chicken|bbq chicken'],
+      ['Burnt Ends', 17.99, 'gf', '', 'Caramelized brisket point cubes in sweet BBQ glaze.', 'burnt ends'],
+      ['Grilled Lamb Chops (4)', 32.99, 'h gf', 'D', 'Halal lamb chops with mint-yogurt sauce.', 'lamb chops|chops'],
+      ['Smoked Jackfruit Sandwich', 13.99, 'vg', 'G', 'Pulled smoked jackfruit with BBQ sauce and slaw.', 'jackfruit'],
+      ['Skillet Cornbread', 5.49, 'v', 'G D E', 'Honey-butter cornbread in cast iron.', 'cornbread|corn bread'],
+      ['Collard Greens', 5.49, 'gf', '', 'Slow-cooked with smoked turkey.', 'collards|collard greens|greens'],
+      ['BBQ Baked Beans', 5.49, 'gf', '', 'Smoky beans with brisket bits.', 'baked beans|beans']
+    ] },
+    { cat: 'Burgers & Fast Food', items: [
+      ['Classic Smash Burger', 13.99, 'pop', 'G D E SE', 'Two smashed patties, American cheese, pickles and house sauce.', 'smash burger|burger|cheeseburger|classic burger'],
+      ['Bacon Double Cheeseburger', 16.99, '', 'G D E SE', 'Two patties, double cheddar and crispy bacon.', 'bacon burger|bacon cheeseburger|double cheeseburger'],
+      ['Halal Beef Burger', 15.99, 'h', 'G D E SE', 'Zabiha halal beef patty, cheddar, lettuce, tomato and onion.', 'halal burger'],
+      ['Beyond Burger', 15.99, 'vg', 'G S SE', 'Plant-based patty, vegan cheese and vegan sauce.', 'beyond|vegan burger|veggie burger|plant burger'],
+      ['Nashville Hot Chicken Sandwich', 14.99, 's s2', 'G D E', 'Crispy chicken thigh in Nashville hot oil, slaw and pickles.', 'nashville|hot chicken|spicy chicken sandwich'],
+      ['Crispy Chicken Sandwich', 13.99, '', 'G D E', 'Buttermilk-fried chicken, lettuce, pickles and mayo.', 'chicken sandwich'],
+      ['Buffalo Wings (8)', 13.99, 's gf', 'D', 'With blue cheese dip and celery (mild, hot or BBQ).', 'wings|chicken wings|buffalo wings'],
+      ['Chicken Tenders (4)', 12.99, '', 'G E', 'Crispy tenders with honey mustard.', 'tenders|chicken tenders|nuggets'],
+      ['Fries', 4.99, 'vg', '', 'Skin-on fries with sea salt.', 'fries|french fries|chips'],
+      ['Onion Rings', 5.99, 'v', 'G D E', 'Beer-battered onion rings.', 'onion rings|rings'],
+      ['Loaded Cheese Fries', 8.99, '', 'D', 'Fries with cheddar sauce, bacon and scallions.', 'cheese fries|loaded fries']
+    ] },
+    { cat: 'Mexican', items: [
+      ['Tacos al Pastor (3)', 13.99, 's pop gf', '', 'Marinated pork with pineapple, onion and cilantro on corn tortillas.', 'al pastor|pastor|tacos|taco'],
+      ['Carne Asada Tacos (3)', 14.99, 'gf', '', 'Grilled skirt steak, onion, cilantro and salsa verde.', 'carne asada|steak tacos'],
+      ['Baja Fish Tacos (3)', 14.99, '', 'F G E', 'Beer-battered cod, cabbage and chipotle crema.', 'fish tacos'],
+      ['Birria Tacos (3)', 16.99, 's', 'D', 'Slow-braised beef, melted cheese and consomé for dipping.', 'birria'],
+      ['Chicken Burrito', 14.49, '', 'G D', 'Grilled chicken, rice, beans, cheese, pico and crema.', 'burrito'],
+      ['Veggie Burrito Bowl', 13.49, 'vg gf', '', 'Rice, black beans, fajita veggies, corn, pico and guac.', 'burrito bowl|veggie bowl'],
+      ['Cheese Quesadilla', 10.99, 'v', 'G D', 'Flour tortilla with Oaxaca cheese (add chicken +$3).', 'quesadilla'],
+      ['Chicken Enchiladas Verdes', 17.49, 'gf', 'D', 'Three enchiladas in tomatillo sauce with crema.', 'enchiladas|enchilada'],
+      ['Nachos Supreme', 13.99, 'v s', 'D', 'Chips, beans, cheese, jalapeños, crema and guac.', 'nachos'],
+      ['Guacamole & Chips', 11.99, 'vg gf', '', 'Avocado smashed to order with lime and jalapeño.', 'guac|guacamole|chips and guac'],
+      ['Churros', 7.49, 'v', 'G D E', 'Cinnamon-sugar churros with chocolate sauce.', 'churros|churro']
+    ] },
+    { cat: 'Middle Eastern', items: [
+      ['Chicken Shawarma Wrap', 12.99, 'h pop', 'G SE', 'Marinated chicken, garlic toum, pickles and fries in saj bread.', 'shawarma|chicken shawarma|shawarma wrap'],
+      ['Beef Shawarma Plate', 19.99, 'h', 'SE D', 'Spiced beef over rice with hummus, salad, tahini and pita.', 'beef shawarma|shawarma plate'],
+      ['Falafel Wrap', 10.99, 'vg h', 'G SE', 'Crispy falafel, tahini, pickled turnips and salad.', 'falafel wrap'],
+      ['Falafel (6 pc)', 8.49, 'vg gf', 'SE', 'Crispy chickpea and herb falafel with tahini.', 'falafel'],
+      ['Shish Tawook Plate', 19.49, 'h gf', 'D', 'Charcoal-grilled chicken skewers with garlic sauce and rice.', 'shish tawook|tawook'],
+      ['Lamb Kofta Plate', 21.49, 'h gf', 'SE', 'Grilled minced lamb skewers with rice and hummus.', 'kofta|kafta'],
+      ['Hummus', 8.49, 'vg gf', 'SE', 'Chickpeas with tahini, lemon and olive oil, with warm pita.', 'hummus|houmous'],
+      ['Baba Ghanoush', 8.99, 'vg gf', 'SE', 'Smoky roasted eggplant with tahini and pomegranate.', 'baba ghanoush|baba ganoush'],
+      ['Fattoush Salad', 9.49, 'vg', 'G', 'Crisp vegetables, sumac and toasted pita chips.', 'fattoush'],
+      ['Lentil Soup', 6.49, 'vg gf', '', 'Red lentil soup with cumin and lemon.', 'lentil soup'],
+      ['Kunafa', 9.49, 'v', 'G D N', 'Warm shredded pastry over sweet cheese with syrup and pistachio.', 'kunafa|knafeh'],
+      ['Baklava (4 pc)', 6.99, 'v', 'G N', 'Flaky phyllo with walnuts, pistachios and honey syrup.', 'baklava']
+    ] },
+    { cat: 'Seafood', items: [
+      ['Grilled Salmon', 29.00, 'gf pop', 'F', 'Atlantic salmon with lemon-dill sauce and greens.', 'salmon'],
+      ['Whole Maine Lobster (1.5 lb)', 54.00, 'gf', 'SH D', 'Steamed lobster with drawn butter, corn and potatoes.', 'lobster|whole lobster'],
+      ['Lobster Roll', 32.00, '', 'SH G E D', 'Chilled lobster salad on a buttered roll, with fries.', 'lobster roll'],
+      ['Garlic Butter Shrimp', 26.00, 'gf', 'SH D', 'Jumbo shrimp sautéed in garlic butter with rice.', 'shrimp|garlic shrimp|prawns'],
+      ['Oysters (half dozen)', 21.00, 'gf', 'SH', 'East Coast oysters with mignonette and lemon.', 'oysters|oyster'],
+      ['Fried Calamari', 15.00, '', 'SH G E', 'Crispy calamari with marinara and lemon aioli.', 'calamari|squid'],
+      ['Seafood Paella', 38.00, 'gf', 'SH F', 'Saffron rice with shrimp, mussels, clams and chorizo (serves 2).', 'paella'],
+      ['Crab Cakes (2)', 24.00, '', 'SH G E', 'Jumbo lump crab cakes with remoulade.', 'crab cakes|crab cake|crab'],
+      ['Blackened Fish Tacos (3)', 17.00, 's', 'F', 'Cajun-spiced mahi-mahi with mango salsa.', 'blackened fish|mahi tacos']
+    ] },
+    { cat: 'Cafe & Coffee', items: [
+      ['Espresso', 3.50, 'vg gf', '', 'Double shot of our house blend.', 'espresso'],
+      ['Cappuccino', 4.75, 'v gf', 'D', 'Espresso with velvety steamed milk (oat milk free).', 'cappuccino|cappucino'],
+      ['Latte', 5.00, 'v gf', 'D', 'Espresso with steamed milk — iced or hot.', 'latte|iced latte'],
+      ['Cold Brew', 5.25, 'vg gf', '', '18-hour cold brew over ice.', 'cold brew|iced coffee'],
+      ['Matcha Latte', 5.75, 'v gf', 'D', 'Ceremonial matcha with steamed milk.', 'matcha'],
+      ['Hot Chocolate', 4.75, 'v gf', 'D', 'Made with real Belgian chocolate.', 'hot chocolate|cocoa'],
+      ['Avocado Toast', 13.50, 'vg', 'G', 'Sourdough, smashed avocado, chili flakes and lemon.', 'avocado toast|avo toast'],
+      ['Buttermilk Pancakes', 14.00, 'v', 'G D E', 'Three fluffy pancakes with maple syrup and berries.', 'pancakes|pancake'],
+      ['Eggs Benedict', 16.00, '', 'G D E', 'Poached eggs, ham and hollandaise on an English muffin.', 'eggs benedict|benedict'],
+      ['Acai Bowl', 12.50, 'vg gf', 'N', 'Acai, banana, granola, berries and almond butter.', 'acai|acai bowl']
+    ] },
+    { cat: 'Bakery & Desserts', items: [
+      ['Butter Croissant', 4.25, 'v', 'G D E', 'Flaky all-butter croissant baked every morning.', 'croissant|croissants'],
+      ['Cinnamon Roll', 5.25, 'v', 'G D E', 'Soft swirl with cream cheese frosting.', 'cinnamon roll'],
+      ['Chocolate Fudge Cake', 8.95, 'v pop', 'G D E', 'Rich chocolate layers with fudge frosting (slice).', 'chocolate cake|fudge cake|cake'],
+      ['New York Cheesecake', 9.25, 'v', 'G D E', 'Creamy classic cheesecake with berry compote.', 'cheesecake'],
+      ['Red Velvet Cupcake', 4.50, 'v', 'G D E', 'With cream cheese frosting.', 'cupcake|cupcakes|red velvet'],
+      ['Gluten-Free Brownie', 5.00, 'v gf', 'D E', 'Fudgy almond-flour brownie.', 'brownie|brownies'],
+      ['French Macarons (6)', 14.00, 'v gf', 'N D E', 'Pistachio, raspberry, vanilla, chocolate, caramel and lemon.', 'macarons|macaron'],
+      ['Gelato (2 scoops)', 7.50, 'v gf', 'D E', 'Pistachio, chocolate, vanilla, strawberry or salted caramel.', 'gelato|ice cream|scoop'],
+      ['Vegan Mango Sorbet', 6.50, 'vg gf', '', 'Alphonso mango sorbet, dairy-free.', 'sorbet|mango sorbet'],
+      ['Chocolate Lava Cake', 11.00, 'v', 'G D E', 'Warm molten chocolate cake with vanilla gelato.', 'lava cake|molten cake']
+    ] },
+    { cat: 'Bar', items: [
+      ['Classic Margarita', 15.00, 'alc vg gf', '', 'Tequila, fresh lime and orange liqueur (21+).', 'margarita cocktail|margaritas'],
+      ['Old Fashioned', 17.00, 'alc vg gf', '', 'Bourbon, bitters and orange (21+).', 'old fashioned'],
+      ['Mojito', 14.00, 'alc vg gf', '', 'White rum, mint, lime and soda (21+).', 'mojito'],
+      ['Espresso Martini', 16.00, 'alc vg gf', '', 'Vodka, fresh espresso and coffee liqueur (21+).', 'espresso martini|martini'],
+      ['Draft Beer', 8.00, 'alc vg', 'G', 'Local IPA, lager or seasonal (16 oz, 21+).', 'beer|beers|ipa|lager|draft'],
+      ['House Wine (glass)', 12.00, 'alc vg gf', '', 'Red, white or rosé (21+).', 'wine|red wine|white wine|rose|house wine'],
+      ['Virgin Mojito', 8.00, 'vg gf', '', 'Mint, lime, sugar and soda — alcohol-free.', 'virgin mojito|mocktail|mocktails'],
+      ['Mango Chili Spritz (mocktail)', 9.00, 'vg gf s', '', 'Mango, lime, a touch of chili and soda — alcohol-free.', 'mango spritz|chili spritz'],
+      ['Berry Nojito (mocktail)', 9.00, 'vg gf', '', 'Mixed berries, mint, lime and soda — alcohol-free.', 'nojito|berry mocktail'],
+      ['Shirley Temple', 6.00, 'vg gf', '', 'Ginger ale, grenadine and a cherry — kids love it.', 'shirley temple']
+    ] },
+    { cat: 'Drinks', items: [
+      ['Soft Drink', 3.50, 'vg gf', '', 'Coke, Diet Coke, Sprite or ginger ale.', 'coke|coca cola|soda|sprite|diet coke|soft drink|cola|pop'],
+      ['Fresh Lemonade', 4.50, 'vg gf', '', 'House-squeezed lemonade.', 'lemonade'],
+      ['Fresh Orange Juice', 5.50, 'vg gf', '', 'Squeezed to order.', 'orange juice|oj|juice'],
+      ['Sparkling Water', 4.00, 'vg gf', '', 'San Pellegrino, 500 ml.', 'sparkling water|pellegrino'],
+      ['Bottled Water', 3.00, 'vg gf', '', 'Still spring water (tap water is free).', 'water|bottled water'],
+      ['Iced Tea', 3.75, 'vg gf', '', 'Unsweetened or peach.', 'iced tea|tea']
+    ] },
+    { cat: 'Kids', items: [
+      ['Kids Cheese Pizza', 9.00, 'v k', 'G D', '8" cheese pizza.', 'kids pizza'],
+      ['Kids Chicken Tenders & Fries', 9.50, 'k', 'G E', 'Three tenders with fries and ketchup.', 'kids tenders|kids meal'],
+      ['Kids Mac and Cheese', 8.00, 'v k', 'G D', 'Small mac and cheese with fruit.', 'kids mac'],
+      ['Kids Butter Chicken & Rice', 10.00, 'h k gf', 'D N', 'Extra-mild butter chicken over rice.', 'kids butter chicken'],
+      ['Kids Vegan Pasta', 8.00, 'vg k', 'G', 'Penne with tomato sauce and vegan parmesan.', 'kids pasta|kids vegan pasta'],
+      ['Kids Mini Sundae', 5.00, 'v k gf', 'D E', 'One scoop with sprinkles and a cherry.', 'kids sundae|mini sundae']
+    ] },
+    { cat: 'Deals & Combos', items: [
+      ['Weekday Lunch Combo', 14.99, 'pop', 'G D', 'Any curry, pasta or burger with a side and soft drink — Mon–Fri, 11 AM–3 PM.', 'lunch combo|lunch special|lunch deal'],
+      ['Indian Feast for Two', 49.99, 'h', 'D G N', 'Butter chicken, chana masala, rice, 2 garlic naan and 2 mango lassis.', 'indian feast'],
+      ['Sushi Boat for Two', 68.00, '', 'F SH S G E', '10 nigiri, a dragon roll, a spicy tuna roll and a California roll.', 'sushi boat|boat'],
+      ['Pizza Party Deal', 45.00, 'v', 'G D', 'Any 2 pizzas, garlic knots and 4 soft drinks.', 'pizza deal|pizza party'],
+      ['Family Feast (serves 4)', 89.00, 'pop', 'G D E', 'Chicken biryani, butter chicken, a margherita pizza, fries, 4 naan and 4 soft drinks.', 'family feast|family deal|family meal'],
+      ['BBQ Platter for Two', 54.99, '', 'G', 'Brisket, half rack of ribs, burnt ends, 3 sides and cornbread.', 'bbq platter|platter for two']
     ] }
   ],
   facts: {
@@ -281,7 +427,70 @@ N.demo = {
     ['shepherds pie|cottage pie', 'Our Shepherd\'s Pie is braised lamb under a golden mashed-potato crust — proper British comfort food.'],
     ['mac and cheese kids|mac cheese', 'Our three-cheese mac and cheese is a hit with kids — and there\'s a smaller kids portion too.'],
     ['gravy|onion gravy', 'Bangers and mash comes with onion gravy, and the fried chicken with peppered gravy — extra gravy is free.'],
-    ['sticky toffee|toffee pudding', 'Sticky toffee pudding is a warm date sponge soaked in toffee sauce with custard — our most popular British dessert.']
+    ['sticky toffee|toffee pudding', 'Sticky toffee pudding is a warm date sponge soaked in toffee sauce with custard — our most popular British dessert.'],
+    /* steakhouse */
+    ['steak cook|steak cooked|how cook steak|medium rare|steak temperature|how do you cook|well done|rare steak', 'Our chefs recommend medium-rare, but we\'ll cook your steak exactly how you like it — from rare to well done.'],
+    ['dry aged|dry age|aged beef', 'Our porterhouse is dry-aged for 28 days; the ribeye and strip are wet-aged USDA Prime.'],
+    ['steak sauce|peppercorn|bearnaise|chimichurri', 'Steak sauces are $3: peppercorn, béarnaise, chimichurri or red wine jus.'],
+    ['steak come with|steak sides|sides included', 'Steaks are served à la carte except the Porterhouse for Two, which includes two sides. Our sides are $9–$10.'],
+    ['halal steak|steak halal', 'Yes — our Halal Ribeye is zabiha halal and grilled separately. Our other steaks aren\'t halal.'],
+    ['best steak|which steak|most tender', 'For tenderness, go for the filet mignon; for flavor and marbling, the ribeye is our best seller.'],
+    ['wagyu|kobe', 'We don\'t serve wagyu right now — our ribeye and strip are USDA Prime.'],
+    /* bbq & grill */
+    ['wood|smoke with|what wood', 'We smoke over oak and hickory for 14 hours in our pit smoker.'],
+    ['brisket sold out|sell out|run out', 'Brisket and burnt ends can sell out on busy nights — pre-ordering for pickup is the safe bet.'],
+    ['bbq sauce|which sauce bbq|sauces', 'We have three house BBQ sauces: original, spicy and Carolina gold. All are gluten-free.'],
+    ['how much meat|pound per person|meat per person', 'Plan on about 1/2 lb of meat per person.'],
+    ['ribs pork|pork free bbq|bbq halal', 'Our ribs and pulled pork are pork; for halal grill options, try the Grilled Lamb Chops or the Halal Ribeye.'],
+    ['smoke ring|pink brisket', 'The pink ring in our brisket is the smoke ring — a sign of real low-and-slow smoking, not undercooked meat.'],
+    /* burgers & fast food */
+    ['smash burger|what smash', 'A smash burger is a ball of fresh beef pressed thin on a hot griddle, so it gets crispy, lacy edges.'],
+    ['burger cook|medium rare burger|pink burger', 'Smash patties are thin and always cooked through with a crispy crust.'],
+    ['gluten free bun|lettuce wrap|no bun', 'Any burger can come on a gluten-free bun (+$1.50) or as a lettuce wrap.'],
+    ['add bacon|extra patty|add cheese|burger add', 'Burger add-ons: bacon $2.50, extra patty $3.50, extra cheese $1, fried egg $2, avocado $2.'],
+    ['wing flavor|wing sauce|wings hot', 'Wings come mild, hot or BBQ — tell us your favorite.'],
+    ['shared fryer|fries vegan|fryer', 'Our fries are vegan but share a fryer with chicken and onion rings.'],
+    /* mexican */
+    ['tortilla|corn tortilla|handmade tortilla', 'Our corn tortillas are pressed fresh every morning; flour tortillas come from a local tortillería.'],
+    ['birria|what is birria|consome', 'Birria is beef slow-braised with dried chilies; we crisp the tacos with cheese and serve them with consomé for dipping.'],
+    ['salsa|hot sauce|salsa bar', 'Every Mexican order comes with salsa verde and salsa roja — the roja is the spicy one.'],
+    ['lard|beans vegan|rice vegan', 'We never use lard — our beans and rice are vegan.'],
+    ['taco mix|mix tacos|different tacos', 'You can mix fillings in any order of 3 tacos for the higher price.'],
+    ['add guac|extra guac', 'Add guacamole to anything for $2.50.'],
+    /* middle eastern */
+    ['toum|garlic sauce', 'Toum is our fluffy Lebanese garlic sauce — no dairy or egg, just garlic, oil and lemon.'],
+    ['charcoal|grilled charcoal', 'Our kebabs and tawook are grilled over real charcoal.'],
+    ['shawarma made|how shawarma', 'Our shawarma is marinated overnight, roasted on a vertical spit and shaved to order.'],
+    ['falafel vegan|falafel gluten', 'Our falafel is vegan and gluten-free — made from soaked chickpeas and fresh herbs.'],
+    ['kunafa|what kunafa', 'Kunafa is warm shredded pastry over sweet cheese, soaked in syrup and topped with pistachio — best eaten hot!'],
+    ['middle eastern halal|shawarma halal', 'Everything in our Middle Eastern section is zabiha halal.'],
+    /* seafood */
+    ['lobster price|market price|lobster size', 'Our whole Maine lobster is 1.5 lb and $54, served with drawn butter, corn and potatoes.'],
+    ['oysters where|oyster type|oysters fresh', 'Our oysters are East Coast varieties delivered daily — ask your server what\'s fresh today.'],
+    ['fish fresh|seafood fresh|fresh fish', 'Our seafood is delivered fresh six days a week.'],
+    ['paella serve|paella size|paella take', 'Our seafood paella serves 2 and takes about 30 minutes, since it\'s cooked to order.'],
+    ['shellfish allergy|seafood allergy', 'Shellfish is in our lobster, shrimp, oyster, calamari, crab cakes and paella. Please let our staff know so the kitchen can take care.'],
+    /* cafe */
+    ['oat milk|almond milk|plant milk|dairy free milk', 'Oat, almond and soy milk are free in any coffee drink.'],
+    ['decaf|decaffeinated', 'Yes — any coffee can be made decaf.'],
+    ['breakfast hours|serve breakfast|brunch hours', 'Breakfast and brunch dishes are served all day, from 11 AM when we open.'],
+    ['coffee beans|roast|single origin', 'Our house espresso is a chocolatey Brazil–Ethiopia blend roasted in Brooklyn.'],
+    ['laptop|work from|study', 'Laptops are welcome at the cafe counter on weekdays before 5 PM.'],
+    /* bakery & desserts */
+    ['bring cake|bring own cake|bring our own cake|bring a cake|can i bring cake|outside cake', "Yes, you can bring a cake! There's a $2 per guest plating fee, and we'll add candles and bring it out with a song."],
+    ['custom cake|order cake|birthday cake order|celebration cake', "We don't make custom celebration cakes, but you're welcome to bring one ($2 per guest plating fee) — and our Chocolate Fudge Cake by the slice is always a hit."],
+    ['gelato flavor|ice cream flavor|flavors', 'Gelato flavors: pistachio, chocolate, vanilla, strawberry and salted caramel, plus a vegan mango sorbet.'],
+    ['dessert vegan|vegan dessert', 'Vegan desserts: mango sorbet, mango sticky rice and sesame balls.'],
+    ['lava cake|lava cake take', 'Our chocolate lava cake is baked to order and takes about 12 minutes — worth it!'],
+    /* bar */
+    ['happy hour|happy hour price|happy hour time|happy hour drinks', 'Happy hour is Monday to Friday, 4–7 PM: $9 classic cocktails, $6 draft beer, $8 house wine and $6 mocktails, plus half-price fries and wings. Alcohol is for guests 21+ with a valid ID.'],
+    ['age|id|how old|21|drinking age|card|id check', 'Alcohol is only served to guests 21 and over with a valid photo ID. Everyone is welcome to enjoy our mocktails!'],
+    ['mocktail|non alcoholic|alcohol free|virgin', 'Our mocktails: Virgin Mojito ($8), Mango Chili Spritz ($9), Berry Nojito ($9) and the Shirley Temple ($6).'],
+    ['cocktail list|cocktails|signature cocktail', 'Our cocktails include the Classic Margarita, Old Fashioned, Mojito and Espresso Martini ($14–$17), for guests 21+ with ID.'],
+    ['beer list|what beer|beers', 'We pour a local IPA, a crisp lager and a seasonal draft (16 oz, $8), for guests 21+ with ID.'],
+    ['wine list|what wine|wine by glass', 'House red, white and rosé are $12 a glass, and we have a full bottle list — ask your server. 21+ with ID.'],
+    ['drink deliver|alcohol delivery|deliver alcohol|beer to go|alcohol to go', "Bar drinks are dine-in only — we don't deliver alcohol or sell it to go. Mocktails, juices and sodas can be added to any order."],
+    ['drink limit|last call|drunk', 'Last call is 30 minutes before the bar closes, and our bartenders always serve responsibly.']
   ]
 };
 

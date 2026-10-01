@@ -312,7 +312,7 @@ function Brain(cfg, opts) {
     if (a) self.topics.push({ id: 'fact:' + f[0], alts: parseKw(f[1]), answer: a, kind: 'faq' });
   });
   (cfg.faqs || []).forEach(function (f, i) { self.topics.push({ id: 'faq:' + i, alts: parseKw(f[0]), answer: f[1], kind: 'faq', bonus: 0.5 }); });
-  this.menu.cats.forEach(function (c) { self.topics[self.topics.findIndex(function (t) { return t.id === 'menu'; })].alts.push({ w: words(c).filter(function (w) { return w !== 'and'; }).map(stem), weak: false, cat: c }); });
+  this.menu.cats.forEach(function (c) { self.topics[self.topics.findIndex(function (t) { return t.id === 'menu'; })].alts.push({ w: words(c).filter(function (w) { return w !== 'and'; }).map(stem), weak: false, cat: c, sec: true }); });
   this.lastSeat = (cfg.reservations && cfg.reservations.last) || 60;
   // cuisine sections (one venue, many kitchens): phrase → menu category
   this.sections = [];
@@ -322,7 +322,7 @@ function Brain(cfg, opts) {
       var w = words(p).filter(function (x) { return x !== 'and' && x !== 'food'; });
       if (!w.length) return;
       self.sections.push({ cat: cat, w: w.join(' ') });
-      menuTopic.alts.push({ w: w.map(stem), weak: false, cat: cat });
+      menuTopic.alts.push({ w: w.map(stem), weak: false, cat: cat, sec: true });
     });
   });
   this.sections.sort(function (a, b) { return b.w.length - a.w.length; });
@@ -728,7 +728,7 @@ B.scoreTopic = function (c) {
       if (!a.w.length) continue;
       var ok = a.w.every(function (w) { return c.set.has(w); });
       if (a.w.length > 1 && ok) { var joined = ' ' + c.stems.join(' ') + ' '; if (joined.indexOf(' ' + a.w.join(' ') + ' ') < 0 && a.w.length > 3) ok = false; }
-      if (ok) { var s = a.weak ? 0.5 : a.w.length; if (s > sc) { sc = s; if (a.cat) cat = a.cat; } hits++; }
+      if (ok) { var s = a.weak ? 0.5 : a.sec ? a.w.length - 0.1 : a.w.length; if (a.cat) cat = a.cat; if (s > sc) sc = s; if (!a.sec) hits++; }
     }
     if (!sc) continue;
     sc += 0.25 * (hits - 1) + (tp.bonus || 0);
@@ -1144,6 +1144,7 @@ B.applyOps = function (ops, R) {
     var id = op.ids[0], it = self.menu.byId[id], idx = F.items.findIndex(function (l) { return l.id === id; }), line = F.items[idx], q = op.qty;
     if (q != null && q > 50) { self.err('qty', 'max', R); return; }
     S.lastItem = id;
+    if (it.tags.indexOf('alc') >= 0 && (op.type === 'add' || op.type === 'swapIn' || op.type === 'set')) { T.alc.push(it); return; }
     if (op.type === 'add' || op.type === 'swapIn') {
       if (q == null) q = op.type === 'swapIn' && T.swapQty ? T.swapQty : 1;
       if (q === 0) return;
@@ -1310,6 +1311,7 @@ B.composeAcks = function (R) {
     else if (S.flows.order) acks.push('Your cart is empty now — what would you like instead?');
   }
   if (T.notes.length) { acks.push(joinList(T.notes.map(function (x) { return 'your ' + x[1].name + ' will be ' + (x[0] === 'Mild' ? 'made mild' : x[0] === 'Medium' ? 'medium-spicy' : 'extra spicy 🌶️'); })).replace(/^y/, 'Got it — y') + '.'); if (!T.added.length && !T.removed.length && !T.updated.length && S.flows.order) R.card(this.cartCard()); }
+  if (T.alc.length && !T.minorReply) acks.push((S.minor ? "Sorry, alcohol is only for guests 21+ with a valid ID, so I can't add the " : 'Bar drinks are dine-in only and for guests 21+ with a valid ID, so I can\'t add the ') + joinList(uniq(T.alc).map(function (i) { return i.name; })) + ' to an order — but our mocktails, like the Virgin Mojito or Mango Chili Spritz, can be added anytime! 🍹');
   if (T.notIn.length) acks.push("There's no " + joinList(T.notIn.map(function (i) { return i.name; }), 'or') + ' in your order right now.');
   if (T.ambig.length) {
     var op = T.ambig[0], items = op.ids.map(function (id) { return self.menu.byId[id]; });
@@ -1551,7 +1553,8 @@ B.answer = function (tp, c, R) {
     case 'deals': { var dl = this.menu.items.filter(function (i) { return /deal|combo|special|bundle|platter|feast|set/i.test(i.cat); }); R.say(this.fill(cfg.dealsText || 'Here are our current deals and combos:')); if (dl.length) R.card(this.menuCard('Deals & combos', dl)); return; }
     case 'menu': if (c.mentions.length && (c.q || /\b(have|got|serve|sell)\b/.test(c.text))) return this.answerItemExists(c, R); return this.showMenu(tp.cat, R);
     case 'price': {
-      if (items.length) { R.say(cap(joinList(items.slice(0, 4).map(function (i) { return 'the ' + i.name + ' is ' + money(i.price); }))) + '.'); R.card(this.menuCard('', items.slice(0, 4))); return; }
+      if (c.section) { var kwds = c.text.split(' ').filter(function (w) { return w.length > 3 && !/price|cost|much|your|what/.test(w); }); var fam = this.menu.items.filter(function (i) { return i.cat === c.section && kwds.some(function (w) { return i.name.toLowerCase().indexOf(w) >= 0; }); }); if (fam.length > 1) items = fam; }
+      if (items.length) { R.say(cap(joinList(items.slice(0, 5).map(function (i) { return 'the ' + i.name + ' is ' + money(i.price); }))) + '.'); R.card(this.menuCard('', items.slice(0, 4))); return; }
       var ps = this.inSection(this.menu.items.filter(function (i) { return !/drink|beverage|dessert|side|kid|bread|extra|bar/i.test(i.cat) || c.section === i.cat; }), c).map(function (i) { return i.price; });
       R.say((c.section ? 'Dishes in our ' + c.section + ' section run ' : 'Most of our dishes run ') + money(Math.min.apply(null, ps)) + '–' + money(Math.max.apply(null, ps)) + ', plus tax. Want to see the menu?');
       if (c.section) { R.card(this.menuCard(c.section, this.menu.items.filter(function (i) { return i.cat === c.section; }))); return; } R.chips = [{ label: 'Show menu', text: 'Menu' }];
@@ -1577,7 +1580,8 @@ B.showMenu = function (cat, R) {
   var self = this;
   if (cat) {
     var its = this.menu.items.filter(function (i) { return i.cat === cat; });
-    R.say(this.pick('menuCat', ['Here\'s our ' + cat + ' — tap Add on anything you like:', cat + ' coming right up! Tap Add to put something in your order:']));
+    var cm = /menu|deals|drinks|kids|bar/i.test(cat) ? cat : cat + ' menu';
+    R.say(this.pick('menuCat', ["Here's our " + cm + ' — tap Add on anything you like:', 'Our ' + cm + ', coming right up! Tap Add to put something in your order.']));
     R.card(this.menuCard(cat, its));
   } else {
     R.say(this.pick('menu', ["Here's our menu! Tap a section to browse, or just tell me what you're craving.", 'Happy to show you! Pick a section below, or type any dish to add it.']));
@@ -1655,7 +1659,7 @@ var ADDR_RE = /\b\d{1,5}[a-z]?\s+(?:[A-Za-z0-9.'-]+\s+){0,4}(?:st|street|ave|ave
 
 B.handle = function (batch, now) {
   this.now = now || new Date();
-  this.T = { started: [], set: {}, changed: [], added: [], removed: [], updated: [], notes: [], notIn: [], ambig: [], contact: [], loose: {}, anySet: false };
+  this.T = { started: [], set: {}, changed: [], added: [], removed: [], updated: [], notes: [], alc: [], notIn: [], ambig: [], contact: [], loose: {}, anySet: false };
   var R = new Reply(this), self = this, texts = [];
   /* ─────────────────────────── CLAUDE API HOOK ───────────────────────────
    * To use Claude instead of (or on top of) this rule engine, send the batched
@@ -1765,6 +1769,19 @@ B.understand = function (raw, R) {
   var plain = cleaned.replace(/\s+/g, ' ').trim();
   var hasOther = cls.some(function (c) { return !c.oosUsed && (c.topic || c.unknown.length || c.mentions.length || c.allergy || c.avail || c.greet || c.thanks || c.flowKw); });
 
+  // age: alcohol is 21+ only
+  var ageM = /\b(?:i am|i'm|im|i’m|am)\s+(?:only\s+)?(\d{1,2})\b(?!\s*(?:people|guests|persons|of us|pm|am|:|kg|lb|inch|th|st|nd|rd|\/))|\b(\d{1,2})\s*(?:years? old|yrs? old|yo)\b/i.exec(raw);
+  var ageNum = ageM ? +(ageM[1] || ageM[2]) : null;
+  if (ageNum != null && ageNum < 21) S.minor = true;
+  if (ageNum != null && ageNum >= 21) S.minor = false;
+  if (/\b(under ?age|under 21|not 21|minor)\b/i.test(raw)) S.minor = true;
+  var alcWord = /\b(beer|beers|wine|wines|cocktail|cocktails|alcohol|alcoholic|liquor|vodka|whiskey|whisky|rum|tequila|bourbon|margarita|margaritas|mojito|martini|drunk|booze|shots?)\b/i.test(raw) && !/\b(virgin|mocktail|non ?alcoholic|alcohol free)\b/i.test(raw);
+  if (S.minor && alcWord && !this.T.minorReply) {
+    var mocks = this.menu.items.filter(function (i) { return i.cat === 'Bar' && i.tags.indexOf('alc') < 0; });
+    R.say(this.pick('minor', ["Sorry, alcohol is only served to guests 21+ with a valid ID. But you're very welcome to try our mocktails — the Virgin Mojito and Mango Chili Spritz are favorites! 🍹", "I'm sorry, we can only serve alcohol to guests 21 and over with a valid ID. Our mocktails are just as fun, though — how about a Berry Nojito? 🍹"]));
+    if (mocks.length) R.card(this.menuCard('Mocktails', mocks));
+    this.T.minorReply = true;
+  }
   // after a goodbye: stay quiet on more thanks/bye, answer anything real
   if (S.ended) {
     if (!understood && cls.every(function (c) { return c.thanks || c.bye || c.noOnly || c.yesOnly; })) { R.silent = true; T.noNext = true; return; }
@@ -1810,6 +1827,7 @@ B.understand = function (raw, R) {
     var hardVerb = /\b(add|remove|delete|drop|make|change|swap|replace|take off|another|more|want|get|order|give|need|have)\b/.test(c.text) || c.ops.some(function (o) { return o.explicitQty; });
     c.opsOK = c.ops.length > 0 && !(c.topic && !hardVerb) && (!c.q || c.reqQ || /\b(add|remove|delete|drop|make|change|swap|replace|take off|another|more)\b/.test(c.text)) && c.ctx !== 'cake' && c.ctx !== 'catering' && !(aw.field === 'interests' && !c.flowKw) && !(S.flows.cake && /^(flavor|size|message)$/.test(aw.field || '') && !c.flowKw) && !c.allergy;
     if (c.opsOK && c.ops.every(function (o) { return o.type === 'remove' || o.type === 'swapOut'; }) && !S.flows.order) { c.opsOK = false; T.notIn = T.notIn.concat(c.ops.map(function (o) { return self.menu.byId[o.ids[0]]; })); understood = true; }
+    if (c.opsOK && c.ops.every(function (o) { return o.ids.length === 1 && self.menu.byId[o.ids[0]].tags.indexOf('alc') >= 0; })) { c.opsOK = false; if (!T.minorReply) c.ops.forEach(function (o) { T.alc.push(self.menu.byId[o.ids[0]]); }); understood = true; }
     if (c.opsOK && !S.flows.order) { self.start('order'); c.started = c.started || 'order'; }
   });
 
@@ -1951,6 +1969,7 @@ B.understand = function (raw, R) {
   if (aw.field === 'email' && !em.valid.length && !understood && !isQ && !hasOther) { this.err('email', 'bad', R); understood = true; }
 
   // 5) questions → answers (always before we return to the pending step)
+  if (T.minorReply) { understood = true; cls.forEach(function (c) { if (/\b(beer|wine|cocktail|alcohol|liquor|drink|vodka|whiskey|rum|tequila|bourbon|margarita|mojito|martini|shot)s?\b|\b(21|age|old)\b/.test(c.text) || c.mentions.some(function (m) { return m.ids.some(function (id) { return self.menu.byId[id].tags.indexOf('alc') >= 0; }); })) c.answered = true; }); }
   var allergyC = cls.filter(function (c) { return c.allergy && !c.used; });
   if (allergyC.length) { this.answerAllergy(allergyC, R); allergyC.forEach(function (c) { c.answered = true; }); understood = true; }
   cls.forEach(function (c) {
@@ -1960,17 +1979,18 @@ B.understand = function (raw, R) {
     if (tp) {
       var id = tp.t.id;
       var freeText = /^(name|address|note|message|interests|eventType|occasion|budget)$/.test(aw.field || '');
-      var ok = c.q || tp.score >= 2 || (c.stems.length <= 5 && !c.hasEnt && !c.started && !freeText);
+      var ent = !!(c.date || c.time || c.guests || c.opsOK || c.zips.length || (c.seating && S.flows.reserve));
+      var ok = c.q || tp.score >= 2 || (c.stems.length <= 5 && !ent && !c.started && !freeText);
       if (c.opsOK && !c.q) ok = false;
       if (tp.t.flow && c.started === tp.t.flow) ok = false;
       if (id === 'reservationInfo' && (c.started || !c.q && S.flows.reserve)) ok = false;
       if (id === 'contact' && /^(phone|email|both|contactPref)$/.test(aw.field || '')) ok = false;
-      if ((id === 'delivery' || id === 'pickup' || id === 'seating' || id === 'spicy' || id === 'kids' || id === 'price' || id === 'best') && !c.q && (c.started || c.hasEnt || aw.field || S.active.length)) ok = false;
-      if (id === 'hours' && !c.q && (c.hasEnt || c.started || aw.field)) ok = false;
+      if ((id === 'delivery' || id === 'pickup' || id === 'seating' || id === 'spicy' || id === 'kids' || id === 'price' || id === 'best') && !c.q && (c.started || ent || (aw.field && c.stems.length > 3))) ok = false;
+      if (id === 'hours' && !c.q && (ent || c.started)) ok = false;
       if (id === 'deals' && !c.q && c.started) ok = false;
       if (id === 'menu' && !c.q && c.started && !tp.cat) ok = false;
       if (id === 'cart' && !c.q && !/\b(cart|total)\b/.test(c.text)) ok = false;
-      if (tp.t.kind === 'faq' && !c.q && tp.score < 2 && (c.started || c.hasEnt || aw.field)) ok = false;
+      if (tp.t.kind === 'faq' && !c.q && tp.score < 2 && (c.started || ent || freeText)) ok = false;
       if (id === 'itemInfo' && c.opsOK) ok = false;
       if (ok) { self.answer(tp, c, R); c.answered = true; understood = true; return; }
     }
