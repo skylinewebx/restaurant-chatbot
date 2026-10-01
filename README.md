@@ -42,5 +42,6 @@ See the `CLAUDE API HOOK` comment in `Brain.prototype.handle` (`chatbot.js`). Ca
 ## Testing
 
 ```bash
-node tests/play.js demo "hi" "table for 4 saturday at 8pm"
+node tests/run.js            # 52 scripted conversations with assertions
+node tests/play.js demo "hi" "table for 4 saturday at 8pm"   # ad-hoc transcript
 ```

@@ -261,7 +261,7 @@ Reply.prototype.done = function () {
   var b = this.b, bubbles = [];
   if (this.silent) return { bubbles: [], events: this.events };
   if (this.hoursOnly) return { bubbles: [{ text: this.hoursOnly, cards: [], chips: [] }], events: this.events };
-  var parts = this.ans.concat(this.acks, this.errs);
+  var parts = this.ans.concat(this.acks.length ? [this.acks.join(' ')] : [], this.errs);
   if (this.q) parts.push(this.q);
   if (!parts.length && !this.cards.length && !this.after.length) {
     if (this.scoped) return { bubbles: [{ text: b.fill(b.cfg.scopeLine || "Sorry, I can't help with that. Feel free to ask me anything about {name}! 😊"), cards: [], chips: [] }], events: this.events };
@@ -520,6 +520,7 @@ B.parseOccasion = function (t, awaiting) {
   if (/\bgraduation\b/.test(t)) return 'Graduation';
   if (/\b(date night|romantic|valentine)\b/.test(t)) return 'Date night';
   if (/\b(business|client|clients|work dinner|work lunch|meeting|corporate|team dinner|team lunch|office)\b/.test(t)) return 'Business';
+  if (/\b(just dinner|just lunch|just dining|just eating|no occasion|nothing special|no special occasion|not a special occasion)\b/.test(t)) return 'None';
   if (/\b(baby shower|bridal shower|shower)\b/.test(t)) return 'Shower';
   if (/\b(reunion|farewell|retirement|promotion|celebration|celebrating|holiday party|christmas|eid|diwali|thanksgiving|new year)\b/.test(t)) return 'Celebration';
   if (awaiting && /\b(no|nope|none|nothing|just dinner|just lunch|just dining|just eating|nothing special|no occasion|not really|regular|casual|just food|just a meal|family dinner|just because)\b/.test(t)) return 'None';
@@ -1113,7 +1114,7 @@ B.setTime = function (flow, mins, R, recheck) {
     this.T.fullNote = true;
     R.errs.push(this.pick('full', ['{t} is fully booked ' + this.dayWord(F.date) + ', but ' + joinList(r.alts.map(fmtT), 'and') + (r.alts.length > 1 ? ' are' : ' is') + ' open — would ' + (r.alts.length > 1 ? 'either' : 'that') + ' work?', 'Ah, {t} is already taken ' + this.dayWord(F.date) + '. The closest free times are ' + joinList(r.alts.map(fmtT), 'and') + '.']).replace('{t}', fmtTime(r.mins)));
     R.errField = 'time';
-    R.chips = r.alts.map(function (t) { return { label: fmtT(t), action: { type: 'slot', date: F.date, mins: t, flow: flow } }; }).concat(chips.filter(function (c) { return r.alts.indexOf(c.action.mins) < 0; }).slice(0, 4));
+    R.chips = r.alts.map(function (t) { return { label: fmtT(t), action: { type: 'slot', date: F.date, mins: t, flow: flow } }; }).concat(this.nearestFree(F.date, r.mins, 6).filter(function (t) { return r.alts.indexOf(t) < 0; }).slice(0, 4).map(function (t) { return { label: fmtT(t), action: { type: 'slot', date: F.date, mins: t, flow: flow } }; }));
     return;
   }
   this.setF(flow, 'time', r.mins);
@@ -1350,7 +1351,7 @@ B.composeAcks = function (R) {
     acks.push(T.timeOk === 'reserve' ? op2 + '! Good news — ' + s + ' is available.' : op2 + ' — ' + s + '.');
   }
   if (Rv && set('reserve', 'seating')) acks.push({ outdoor: 'Outdoors it is — enjoy the fresh air! 🌿', indoor: "Indoors it is — cozy!", booth: "A booth it is — I'll request one for you.", window: "I'll request a window table for you.", bar: "Counter seats it is — great for watching the kitchen!", any: "No problem — we'll find you a great spot." }[Rv.seating]);
-  if (Rv && Rv.seating === 'outdoor' && set('reserve', 'seating') && cfg.seating.outdoorNote) acks.push(cfg.seating.outdoorNote);
+  if (Rv && Rv.seating === 'outdoor' && set('reserve', 'seating') && cfg.seating.outdoorNote && acks.length < 2) acks.push(cfg.seating.outdoorNote);
   if (Rv && set('reserve', 'occasion') && Rv.occasion === 'Anniversary') acks.push('Happy anniversary! 💕');
   if (Rv && set('reserve', 'note') && Rv.note) acks.push("I'll pass that note on to our team. 📝");
   var O = S.flows.order;
@@ -1375,7 +1376,7 @@ B.composeAcks = function (R) {
 B.section = function (f) {
   var F = this.state.flows[f], self = this, cfg = this.cfg, rows = [];
   var row = function (k, label) { var v = self.fieldValue(f, k); if (v) rows.push([label, v]); };
-  if (f === 'reserve') { row('guests', 'Guests'); row('date', 'Date'); row('time', 'Time'); row('seating', 'Seating'); if (F.occasion && F.occasion !== 'None') row('occasion', 'Occasion'); if (F.note) row('note', 'Note for staff'); return { title: 'Table reservation', rows: rows }; }
+  if (f === 'reserve') { row('date', 'Date'); row('time', 'Time'); row('guests', 'Guests'); row('seating', 'Seating'); if (F.occasion && F.occasion !== 'None') row('occasion', 'Occasion'); if (F.note) row('note', 'Note for staff'); return { title: 'Table reservation', rows: rows }; }
   if (f === 'order') {
     var t = this.totals();
     rows.push(['Type', F.mode === 'delivery' ? 'Delivery' : 'Pickup']);
@@ -2165,9 +2166,9 @@ var CSS = [
   '.hb{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;transition:.2s}',
   '.hb:hover{background:rgba(255,255,255,.18)}',
   /* body */
-  '.body{flex:1;overflow-y:auto;overflow-x:hidden;padding:18px 14px 8px;display:flex;flex-direction:column;gap:10px;background-color:var(--cream);background-image:var(--pat);scroll-behavior:smooth;overscroll-behavior:contain}',
+  '.body{flex:1;overflow-y:auto;overflow-x:hidden;padding:18px 14px 8px;display:flex;flex-direction:column;gap:10px;background-color:var(--cream);background-image:var(--pat);overscroll-behavior:contain}',
   '.body::-webkit-scrollbar{width:6px}.body::-webkit-scrollbar-thumb{background:rgba(233,196,106,.6);border-radius:6px}',
-  '.row{display:flex;flex-direction:column;max-width:100%;animation:in .35s ease both}',
+  '.row{display:flex;flex-direction:column;max-width:100%}.row.anim{animation:in .35s ease both}',
   '@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}',
   '.row.user{align-items:flex-end}',
   '.bub{max-width:86%;padding:10px 14px;border-radius:18px;font-size:15px;word-wrap:break-word;overflow-wrap:anywhere}',
@@ -2224,7 +2225,7 @@ var CSS = [
   '.quick::-webkit-scrollbar{display:none}',
   '.quick .chip{flex:none;font-size:13.5px;min-height:34px;padding:5px 13px}',
   '.inp{display:flex;align-items:flex-end;gap:8px;padding:8px 12px 12px;background:var(--cream)}',
-  'textarea{flex:1;resize:none;min-height:46px;max-height:120px;padding:12px 16px;border-radius:23px;border:1px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-size:16px;outline:none;line-height:1.35}',
+  'textarea{flex:1;resize:none;min-height:46px;max-height:120px;padding:12px 16px;border-radius:23px;border:1px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-size:16px;outline:none;line-height:1.35;overflow:hidden}',
   'textarea::placeholder{color:#A39684}',
   'textarea:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(244,162,97,.18)}',
   '.send{width:46px;height:46px;flex:none;border-radius:50%;background:var(--tomato);color:#fff;display:grid;place-items:center;box-shadow:0 6px 16px rgba(230,57,70,.3);transition:transform .15s}',
@@ -2321,7 +2322,7 @@ W.close = function () {
   document.documentElement.style.overflow = this._ov || '';
   this.fit();
 };
-W.grow = function () { var t = this.ta; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px'; };
+W.grow = function () { var t = this.ta; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px'; t.style.overflowY = t.scrollHeight > 120 ? 'auto' : 'hidden'; };
 W.save = function () { ssSet(this.key, { state: this.brain.state, log: this.log.slice(-150), queue: this.queue }); };
 W.reset = function () {
   clearTimeout(this.timer); this.queue = []; this.log = []; this.busy = false;
@@ -2384,7 +2385,7 @@ W.typing = function (on) {
   if (on && !t) { t = document.createElement('div'); t.className = 'row bot typing'; t.innerHTML = '<div class="bub"><i></i><i></i><i></i></div>'; this.body.appendChild(t); this.scroll(); }
   if (!on && t) t.remove();
 };
-W.scroll = function () { var b = this.body; requestAnimationFrame(function () { b.scrollTop = b.scrollHeight; }); };
+W.scroll = function () { var b = this.body; b.scrollTop = b.scrollHeight; requestAnimationFrame(function () { b.scrollTop = b.scrollHeight; }); setTimeout(function () { b.scrollTop = b.scrollHeight; }, 120); };
 function A(action) { return esc(JSON.stringify(action)); }
 W.renderCard = function (c, live) {
   var h = '';
@@ -2421,20 +2422,22 @@ W.renderCard = function (c, live) {
   return '';
 };
 W.renderAll = function () {
+  var seenN = this._shown || 0; if (seenN > this.log.length) seenN = 0;
   var self = this, h = '', lastBot = -1, lastCart = -1, lastSum = -1;
   this.log.forEach(function (e, i) { if (e.who === 'bot') { lastBot = i; (e.cards || []).forEach(function (c) { if (c.type === 'cart') lastCart = i; if (c.type === 'summary') lastSum = i; }); } });
   var lastUser = -1; this.log.forEach(function (e, i) { if (e.who === 'user') lastUser = i; });
   this.log.forEach(function (e, i) {
     if (e.who === 'user') {
-      h += '<div class="row user"><div class="bub">' + fmtMsg(e.text) + '</div><div class="meta">' + clock(e.t) + (i === lastUser ? (e.st === 'seen' ? ' · <span class="seen">✓✓ Seen</span>' : ' · ✓') : '') + '</div></div>';
+      h += '<div class="row user' + (i >= seenN ? ' anim' : '') + '"><div class="bub">' + fmtMsg(e.text) + '</div><div class="meta">' + clock(e.t) + (i === lastUser ? (e.st === 'seen' ? ' · <span class="seen">✓✓ Seen</span>' : ' · ✓') : '') + '</div></div>';
       return;
     }
-    h += '<div class="row bot">' + (e.text ? '<div class="bub">' + fmtMsg(e.text) + '</div>' : '');
+    h += '<div class="row bot' + (i >= seenN ? ' anim' : '') + '">' + (e.text ? '<div class="bub">' + fmtMsg(e.text) + '</div>' : '');
     if (e.cards && e.cards.length) h += '<div class="cards">' + e.cards.map(function (c) { return self.renderCard(c, (c.type === 'cart' && i === lastCart) || (c.type === 'summary' && i === lastSum && self.brain.state.review)); }).join('') + '</div>';
     if (i === lastBot && e.chips && e.chips.length && !self.busy) h += '<div class="chips">' + e.chips.map(function (c) { return '<button class="chip" ' + (c.action ? 'data-a="' + A(c.action) + '"' : 'data-t="' + esc(c.text) + '"') + ' data-l="' + esc(c.label) + '">' + esc(c.label) + '</button>'; }).join('') + '</div>';
     h += '<div class="meta">' + clock(e.t) + '</div></div>';
   });
   this.body.innerHTML = h;
+  this._shown = this.log.length;
   if (this.busy) this.typing(true);
   this.scroll();
 };
