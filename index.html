@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@600;700&display=swap">
 <style>
-  :root { --cream:#FFF8EE; --tomato:#E63946; --orange:#F4A261; --mustard:#E9C46A; --basil:#2A9D8F; --ink:#2B2B2B; --muted:#7A6E63; }
+  :root { --cream:#FFFBF5; --tomato:#3A5A40; --orange:#588157; --mustard:#E5E7EB; --basil:#588157; --ink:#2B2B2B; --muted:#7A6E63; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { min-height: 100%; }
   body { background: var(--cream); color: var(--ink); font-family: "DM Sans", system-ui, sans-serif; font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
@@ -65,7 +65,7 @@
   var isDemo = id === 'demo';
 
   document.title = isDemo ? cfg.name : cfg.name + ' – AI Assistant';
-  document.getElementById('bg').style.backgroundImage = FoodChatbot.patternURI(0.07);
+  document.getElementById('bg').style.background = 'linear-gradient(#FFFFFF, #FFFBF5)';
   document.getElementById('logo').innerHTML = FoodChatbot.icon(isDemo ? 'plate' : cfg.icon, 34, 1.7);
   if (!isDemo) {
     var t = document.getElementById('title'); t.textContent = cfg.name;
