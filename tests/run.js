@@ -3,8 +3,8 @@ const { Brain, resolveConfig } = require('../chatbot.js');
 const N = require('../niches.js');
 const VERBOSE = process.argv.includes('-v');
 const OTHER = Object.keys(N).filter(k => k !== 'demo').map(k => N[k].name);
-const HOURS_DAY = /^(Sorry, we're closed on Sundays\.|We're closed on Sundays, I'm afraid\.) We're open Monday to Saturday, 11 AM to 11 PM\.$/;
-const HOURS_TIME = /^(Sorry, that's outside our opening hours\.|Sorry, we're not open at that time\.) We're open Monday to Saturday, 11 AM to 11 PM\.$/;
+const HOURS_DAY = /^Sorry, we're closed on Sundays. We're open Mon–Sat, 11 AM–11 PM.$/;
+const HOURS_TIME = /^Sorry, (that's outside our opening hours|we're closed at that time). We're open Mon–Sat, 11 AM–11 PM.$/;
 const SCOPE = "Sorry, I can't help with that. Feel free to ask me anything about our restaurant! 😊";
 
 // Thu Oct 1 2026, 3:00 PM unless a test says otherwise
@@ -227,9 +227,9 @@ function toSummary(s, answers) {
 /* 36 */ test('past time today is not the hours line', c => {
   const s = session(); const e = s.say('table for 2 today at 1pm'); c(/already passed/.test(e.text) && !HOURS_TIME.test(e.text), e.text); return s;
 });
-/* 37 */ test('ASAP on a Sunday → hours line', c => {
+/* 37 */ test('ASAP on a Sunday → scheduled for next opening, no closed-right-now', c => {
   const s = session('demo', { now: new Date(2026, 9, 4, 13, 0) }); s.say('2 fries for pickup'); const e = s.say('asap');
-  c(HOURS_TIME.test(e.text) || HOURS_DAY.test(e.text), e.text); return s;
+  c(/11:00 AM/.test(e.text) && !/closed right now/i.test(e.text), e.text); return s;
 });
 /* 38 */ test('food words are never a name', c => {
   const s = session(); s.say('table for 2 saturday at 7pm'); toSummary(s, { name: null, seating: 'indoor' });

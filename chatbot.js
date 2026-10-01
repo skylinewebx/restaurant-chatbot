@@ -774,9 +774,8 @@ B.extractPhones = function (raw, context, strict) {
     var s = m[1], d = s.replace(/\D/g, '');
     if (d.length < 7) { if (context && d.length >= 4 && (strict || !/^\d{5}$/.test(d))) { bad = true; spans.push(s); } continue; }
     if (/^\d{1,2}[./-]\d{1,2}([./-]\d{2,4})?$/.test(s.trim()) || /^\d{4}-\d{1,2}-\d{1,2}$/.test(s.trim())) continue;
-    if (d.length === 11 && d[0] === '1') d = d.slice(1);
-    var ok = (d.length === 10 && /^[2-9]\d{2}[2-9]/.test(d) && !/^(\d)\1+$/.test(d) && d !== '1234567890' && d !== '0123456789') || (/^\+/.test(s.trim()) && d.length >= 8 && d.length <= 15);
-    if (ok) { valid.push(d.length === 10 ? '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6) : '+' + d); spans.push(s); }
+    var ok = d.length >= 7 && d.length <= 15 && !/^(\d)\1+$/.test(d) && (context || d.length >= 10 || /^\+/.test(s.trim()));
+    if (ok) { valid.push(d.length === 10 && !/^[+0]/.test(s.trim()) ? '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6) : s.trim().replace(/\s+/g, ' ')); spans.push(s); }
     else { bad = true; spans.push(s); }
   }
   if (!valid.length && context) {
@@ -849,7 +848,7 @@ B.slots = function (key) {
 };
 B.isFull = function (key, t) {
   var d = kdate(key).getDay(), peak = (d === 5 || d === 6) && t >= 1110 && t <= 1230;
-  return hash(this.cfg.id + key + ':' + t) % 100 < (peak ? 45 : 22);
+  return hash(this.cfg.id + key + ':' + t) % 100 < (peak ? 45 : 0);
 };
 B.future = function (key, t, lead) { return at(key, t) >= new Date(this.now.getTime() + (lead || 30) * 60000); };
 B.freeSlots = function (key) { var self = this; return this.slots(key).filter(function (t) { return self.future(key, t) && !self.isFull(key, t); }); };
@@ -938,6 +937,7 @@ B.firstMissing = function () {
       if (f === 'reserve' && k === 'note') { if (cfg.noteOffer !== false && /Birthday|Anniversary|Proposal|Engagement|Graduation|Celebration/.test(F.occasion || '') && F.note == null) return { flow: f, field: 'note' }; continue; }
       if (f === 'order' && k === 'items') { if (!F.items.length) return { flow: f, field: k }; continue; }
       if (f === 'order' && k === 'mode' && F.mode == null && !this.allZips().length) F.mode = 'pickup';
+      if (f === 'order' && k === 'time' && F.mode === 'delivery' && F.time == null) { var nx0 = this.orderTimes('delivery', 1)[0]; F.time = this.asapOK('delivery') || !nx0 ? { asap: true } : { key: nx0.key, mins: nx0.mins }; }
       if (f === 'order' && k === 'address') { if (F.mode !== 'delivery') continue; if (!F.zip && F.address) return { flow: f, field: 'zip' }; if (!F.address) return { flow: f, field: 'address' }; continue; }
       if (k === 'time' && F.time && F.time.tentative) return { flow: f, field: k };
       if (F[k] == null) return { flow: f, field: k };
@@ -987,9 +987,9 @@ B.hoursRuleLine = function (kind, key) {
   var line = this.fill(cfg.hoursLine || '');
   if (kind === 'day') {
     var day = key ? DAY_FULL[kdate(key).getDay()] + 's' : joinList(closed);
-    return this.pick('hrsDay', ["Sorry, we're closed on " + day + '. ' + line, "We're closed on " + day + ", I'm afraid. " + line]);
+    return "Sorry, we're closed on " + day + '. ' + line;
   }
-  return this.pick('hrsTime', ["Sorry, that's outside our opening hours. " + line, "Sorry, we're not open at that time. " + line]);
+  return this.pick('hrsTime', ["Sorry, that's outside our opening hours. " + line, "Sorry, we're closed at that time. " + line]);
 };
 B.err = function (field, code, R, x) {
   var S = this.state, cfg = this.cfg; x = x || {};
@@ -1192,8 +1192,8 @@ var ASK = {
   'reserve.occasion': ['Are you celebrating anything special?', 'Is it a special occasion?'],
   'reserve.note': ['How lovely! 🎉 Would you like me to add a note for our staff — like a candle on dessert or a special message?'],
   'order.mode': ['Would you like that for pickup or delivery?', 'Is this for pickup or delivery?'],
-  'order.address': ["What's the delivery address? Include the street, apartment number and ZIP code.", 'Where should we deliver it? Street, apartment and ZIP code, please.'],
-  'order.zip': ["And what's the ZIP code for that address?"],
+  'order.address': ["What's the street address? (Apt/suite is optional.)"],
+  'order.zip': ["And the ZIP code?"],
   'cake.flavor': ['Which flavor would you like?', 'What flavor should we bake?'],
   'cake.size': ['What size should it be?', 'Which size would you like?'],
   'cake.message': ['What should we write on the cake? (Or tap "No message".)'],
@@ -1231,7 +1231,9 @@ B.askField = function (m, R) {
     var asap = this.asapOK(F.mode), d = cfg.delivery || {};
     var ts = this.orderTimes(F.mode, 5);
     chips = (asap ? [{ label: 'ASAP', action: { type: 'otime', asap: true } }] : []).concat(ts.map(function (x) { return { label: (x.key !== today ? DAY_SHORT[kdate(x.key).getDay()] + ' ' : '') + fmtT(x.mins), action: { type: 'otime', date: x.key, mins: x.mins } }; }));
-    q = asap ? 'When would you like it? ASAP is about ' + (F.mode === 'delivery' ? d.time : d.pickup) + ', or pick a later time:' : "We're closed right now, so let's schedule it — which time works for you?";
+    var quiet = S.otimeAsked && (T.cartChanged || T.menuChips);
+    q = quiet ? null : S.otimeAsked ? this.pick('ask:ot', ['What time would you like to pick it up?', 'When should we have it ready?']) : 'Pickup is usually ready in ' + d.pickup + '. ' + this.fill(cfg.hoursLine || '') + ' What time would you like to pick it up?';
+    S.otimeAsked = true;
   } else if (key === 'reserve.seating') {
     var opts = cfg.seating.options;
     q = opts.length > 3 ? 'Where would you like to sit — indoors, on the ' + (cfg.seating.outdoorLabel || 'patio').toLowerCase().replace(/^outdoor /, '') + ', at the bar, or in our private dining room?' : opts.indexOf('outdoor') >= 0 ? this.pick('ask:seat', ['Would you prefer indoor or outdoor seating?', 'Inside or out on the patio — any preference?']) : 'Any seating preference?';
@@ -1265,6 +1267,7 @@ B.askField = function (m, R) {
     if (key === 'catering.interests') chips = [{ label: "Chef's choice", action: { type: 'set', flow: 'catering', field: 'interests', value: "Chef's choice" } }].concat(this.signature().slice(0, 3).map(function (i) { return { label: i.name, action: { type: 'set', flow: 'catering', field: 'interests', value: i.name } }; }));
     if (m.field === 'contactPref') chips = ['Phone', 'Email', 'Both'].map(function (o) { return { label: o, text: o.toLowerCase() }; });
   }
+  if (key === 'order.time' && !q) { if (!T.menuChips) R.chips = chips; return; }
   if (R.ans.length && q && !R.errs.length) q = this.pick('bridge', ['Now, ', 'Back to your ' + this.flowNoun(m.flow) + ' — ', 'Meanwhile, ']) + lc1(q);
   if (T.clarify) return;
   R.q = q; if (chips) R.chips = chips;
@@ -1324,7 +1327,7 @@ B.composeAcks = function (R) {
     if (T.removed.length) bits.push('removed ' + joinList(T.removed.map(nm)));
     if (T.added.length) bits.push('added ' + joinList(T.added.map(function (x) { return x[0] + ' × ' + x[1].name; })));
     if (T.updated.length) bits.push('updated ' + joinList(T.updated.map(function (x) { return x[1].name + ' to ' + x[0]; })));
-    acks.push(this.pick('cartAck', ['Done — ', 'Got it — ', 'Sure thing — ', 'Perfect — ']) + joinList(bits) + '.');
+    acks.push(this.pick('cartAck', ['Done — ', 'Got it — ', 'Sure thing — ', 'Perfect — ']) + joinList(bits) + '.' + (S.flows.order && S.flows.order.items.length ? ' Total: ' + money(this.totals().total) + '.' : ''));
     if (S.flows.order && S.flows.order.items.length) R.card(this.cartCard());
     else if (S.flows.order) acks.push('Your cart is empty now — what would you like instead?');
   }
@@ -1355,7 +1358,7 @@ B.composeAcks = function (R) {
   if (Rv && set('reserve', 'occasion') && Rv.occasion === 'Anniversary') acks.push('Happy anniversary! 💕');
   if (Rv && set('reserve', 'note') && Rv.note) acks.push("I'll pass that note on to our team. 📝");
   var O = S.flows.order;
-  if (O && set('order', 'mode')) acks.push(O.mode === 'delivery' ? (O.zip ? '' : 'Delivery it is!') : 'Pickup it is — you\'ll find us at ' + this.cfg.street + '.');
+  if (O && set('order', 'mode')) acks.push(O.mode === 'delivery' ? 'Delivery takes about ' + cfg.delivery.time + '.' : '📍 Pickup at ' + this.cfg.street + '.');
   if (O && set('order', 'address') && O.address) acks.push('Got it — delivering to ' + O.address + (O.zip && O.address.indexOf(O.zip) < 0 ? ', ' + O.zip : '') + '.');
   if (O && set('order', 'zip')) { var z = this.zone(O.zip); if (z) acks.push('Great news — we deliver to ' + O.zip + ' (' + money(z.fee) + ' delivery fee, ' + money(z.min) + ' minimum).'); }
   if (O && set('order', 'time') && O.time) acks.push(O.time.asap ? "We'll have it " + (O.mode === 'delivery' ? 'at your door in about ' + cfg.delivery.time : 'ready in about ' + cfg.delivery.pickup) + '.' : (O.mode === 'delivery' ? 'Delivery' : 'Pickup') + ' set for ' + (O.time.key !== dkey(this.now) ? fmtDate(O.time.key) + ' at ' : '') + fmtTime(O.time.mins) + '.');
@@ -1494,11 +1497,12 @@ B.answer = function (tp, c, R) {
         R.say(o ? 'Yes, we\'re open right now until ' + fmtT(o.r[1]) + '!' : "We're closed right now — we open again " + this.nextOpen() + '.');
         return;
       }
+      if (cfg.hoursText) { R.say(cfg.hoursText); return; }
       R.say(cfg.hoursNote ? this.fill(cfg.hoursNote) : this.pick('hrs', ['Here are our opening hours:', 'Our hours are below:']));
       R.card({ type: 'info', title: 'Opening hours', rows: this.hoursRows() });
       return;
     }
-    case 'location': R.say(this.fill("We're at {address}." + (cfg.directions ? ' ' + cfg.directions : ''))); R.card({ type: 'link', label: 'Open in Google Maps', url: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(this.addr() + ' ' + cfg.name) }); return;
+    case 'location': R.say('📍 ' + this.addr()); R.card({ type: 'link', label: 'Get directions', url: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(this.addr() + ' ' + cfg.name) }); return;
     case 'contact': R.say(this.fill("You can call us at {phone} or email {email} — we'd love to hear from you!")); return;
     case 'parking': R.say(this.fill(cfg.parking)); return;
     case 'payment': R.say(this.fill(cfg.payments)); return;
@@ -1703,6 +1707,7 @@ B.setOrderAsap = function (R) {
   var F = this.state.flows.order, self = this;
   if (this.asapOK(F.mode)) { this.setF('order', 'time', { asap: true }); return; }
   var nx = this.orderTimes(F.mode, 5);
+  if (nx[0]) { this.setF('order', 'time', { key: nx[0].key, mins: nx[0].mins }); return; }
   this.err('time', 'closed', R, { msg: "We're closed right now, so ASAP isn't possible" + (nx[0] ? ' — the earliest we can do is ' + (nx[0].key !== dkey(this.now) ? fmtDate(nx[0].key) + ' at ' : '') + fmtTime(nx[0].mins) + '. Would that work?' : '.'), chips: nx.map(function (x) { return { label: (x.key !== dkey(self.now) ? DAY_SHORT[kdate(x.key).getDay()] + ' ' : '') + fmtT(x.mins), action: { type: 'otime', date: x.key, mins: x.mins } }; }) });
 };
 B.setZip = function (zip, R) {
@@ -1763,6 +1768,7 @@ B.greeting = function () {
   var first = this.first();
   return this.pick('hi', ['Hi' + (first ? ' ' + first : ' there') + '! 👋 How can I help you today?', 'Hello' + (first ? ' ' + first : '') + '! 😊 What can I do for you today?', 'Hey' + (first ? ' ' + first : '') + '! Great to see you. What can I get started for you?']);
 };
+B.welcomeChips = function () { return (this.cfg.quick || ['Menu', 'Order', 'Reserve', 'Hours', 'Location']).map(function (q) { return typeof q === 'string' ? { label: q, text: q } : q; }); };
 B.welcome = function () {
   var cfg = this.cfg;
   var t = cfg.welcome || ('Hi there! 👋 Welcome to {name}' + (cfg.tagline ? ' — ' + lc1(cfg.tagline.replace(/\.$/, '')) : '') + '. I can show you our menu, take your order for pickup or delivery' + (cfg.reservations ? ', or book you a table' : '') + '. What can I get started for you?');
@@ -2010,7 +2016,7 @@ B.understand = function (raw, R) {
       var ok = c.q || tp.score >= 2 || (c.stems.length <= 5 && !ent && !c.started && !freeText);
       if (c.opsOK && !c.q) ok = false;
       if (!c.q && c.seating && S.flows.reserve) ok = false;
-      if ((id === 'pickup' || id === 'delivery') && (c.reqQ || c.opsOK) && !c.zips.length) ok = false;
+      if ((id === 'pickup' || id === 'delivery') && (c.reqQ || c.opsOK || (c.mode && S.flows.order)) && !c.zips.length) ok = false;
       if (tp.t.flow && c.started === tp.t.flow) ok = false;
       if (id === 'reservationInfo' && (c.started || !c.q && S.flows.reserve)) ok = false;
       if (id === 'contact' && /^(phone|email|both|contactPref)$/.test(aw.field || '')) ok = false;
@@ -2051,7 +2057,7 @@ B.understand = function (raw, R) {
     if (!S.active.length) { R.say(this.pick('yw', ["You're very welcome! 😊 Is there anything else I can help you with?", 'Happy to help! 😊 Anything else I can do for you?'])); S.pending = { type: 'anything_else' }; T.noNext = true; return; }
     R.say("You're welcome! 😊"); understood = true;
   }
-  if (!understood && any('greet')) { R.say(this.greeting()); understood = true; }
+  if (!understood && any('greet')) { if (cfg.greetWelcome) { R.say(this.welcome()); if (!S.active.length) R.chips = this.welcomeChips(); } else R.say(this.greeting()); understood = true; }
 
   // loose details with no flow → ONE clarifying question
   var L2 = T.loose;
@@ -2066,6 +2072,13 @@ B.understand = function (raw, R) {
     if (cls.length && cls.every(function (c) { return c.gib || c.oosUsed; }) && cls.some(function (c) { return c.gib; })) { R.ans = ["Sorry, I didn't quite catch that. Could you rephrase?"]; T.noNext = true; return; }
     if (cls.length && cls.every(function (c) { return c.yesOnly || c.noOnly; })) {
       if (!S.active.length) { R.say('Sure! What can I help you with — our menu, an order' + (cfg.reservations ? ', or a table' : ', or catering') + '?'); T.noNext = true; return; }
+      this.next(R); return;
+    }
+    var foodC = cls.filter(function (c) { return !c.oosUsed && !c.gib && (c.section || c.mentions.length || c.unknown.length || /\b(desserts?|drinks?|beverages?|food|snacks?|sides?|sweet|sweets|starters?|appetizers?|mains?|dish|dishes|meal|hungry|eat|menu|order)\b/.test(c.text)); })[0];
+    if (foodC) {
+      if (foodC.unknown.length) this.answerUnknown(foodC, R);
+      else if (foodC.section || /\bdesserts?|sweets?\b/.test(foodC.text) || /\bdrinks?|beverages?\b/.test(foodC.text)) this.showMenu(foodC.section || (/\bdrinks?|beverages?\b/.test(foodC.text) ? 'Drinks' : 'Bakery & Desserts'), R);
+      else this.showMenu(null, R);
       this.next(R); return;
     }
     R.scoped = true; T.noNext = true; return;
@@ -2143,7 +2156,7 @@ function icsText(ics, ref) {
 var CSS = [
   ':host{all:initial}',
   '*{box-sizing:border-box;margin:0;padding:0}',
-  '.fc{--cream:#FFF8EE;--tomato:#E63946;--orange:#F4A261;--mustard:#E9C46A;--basil:#2A9D8F;--ink:#2B2B2B;--muted:#7A6E63;--line:#F0E2C4;font-family:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;font-weight:400;color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.45;font-size:15px}',
+  '.fc{--cream:#FFF8EE;--tomato:#E63946;--orange:#F4A261;--mustard:#E9C46A;--basil:#2A9D8F;--ink:#2B2B2B;--muted:#7A6E63;--line:#F0E2C4;font-family:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;font-weight:400;color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;font-size:15px}',
   'button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}',
   'strong,b{font-weight:700}',
   /* launcher */
@@ -2166,16 +2179,18 @@ var CSS = [
   '.hb{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;transition:.2s}',
   '.hb:hover{background:rgba(255,255,255,.18)}',
   /* body */
-  '.body{flex:1;overflow-y:auto;overflow-x:hidden;padding:18px 14px 8px;display:flex;flex-direction:column;gap:10px;background-color:var(--cream);background-image:var(--pat);overscroll-behavior:contain}',
+  '.body{flex:1;overflow-y:auto;overflow-x:hidden;padding:18px 14px 8px;display:flex;flex-direction:column;gap:12px;background-color:var(--cream);background-image:var(--pat);overscroll-behavior:contain}',
   '.body::-webkit-scrollbar{width:6px}.body::-webkit-scrollbar-thumb{background:rgba(233,196,106,.6);border-radius:6px}',
   '.row{display:flex;flex-direction:column;max-width:100%}.row.anim{animation:in .35s ease both}',
   '@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}',
   '.row.user{align-items:flex-end}',
   '.bub{max-width:86%;padding:10px 14px;border-radius:18px;font-size:15px;word-wrap:break-word;overflow-wrap:anywhere}',
-  '.bot .bub{background:#fff;border:1px solid var(--mustard);color:var(--ink);border-bottom-left-radius:4px;box-shadow:0 3px 12px rgba(43,43,43,.06)}',
+  '.bot .bub{background:#fff;border:1px solid rgba(233,196,106,.35);color:var(--ink);border-bottom-left-radius:4px;box-shadow:0 2px 10px rgba(43,43,43,.05)}',
   '.user .bub{background:linear-gradient(135deg,var(--tomato),var(--orange));color:#fff;border-bottom-right-radius:4px;box-shadow:0 3px 12px rgba(230,57,70,.18)}',
   '.meta{font-size:11px;color:var(--muted);margin:4px 6px 0;display:flex;gap:4px;align-items:center}',
-  '.seen{color:var(--basil);font-weight:700}',
+  '.tick{display:inline-flex;color:#A39684;transition:color .5s ease}.tick svg{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}',
+  '.tick .t1{stroke-dasharray:16;stroke-dashoffset:0}.tick.draw .t1{animation:draw .3s ease-out both}@keyframes draw{from{stroke-dashoffset:16}to{stroke-dashoffset:0}}',
+  '.tick .t2{opacity:0;transition:opacity .45s ease}.tick.two{color:var(--basil)}.tick.two .t2{opacity:1}',
   '.typing .bub{display:flex;gap:5px;align-items:center;padding:14px 16px}',
   '.typing i{width:7px;height:7px;border-radius:50%;background:var(--orange);opacity:.4;animation:blink 1.2s infinite}',
   '.typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}',
@@ -2294,7 +2309,7 @@ W.mount = function () {
   var vv = root.visualViewport, fit = function () { self.fit(); };
   if (vv) { vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit); }
   root.addEventListener('resize', fit);
-  if (!this.log.length) this.pushBot({ text: this.brain.welcome(), cards: [], chips: [] }, true);
+  if (!this.log.length) this.pushBot({ text: this.brain.welcome(), cards: [], chips: this.brain.welcomeChips() }, true);
   this.renderAll();
   if (this.queue.length) this.arm(this.DELAY);
   if (this.o.open || (ssGet(this.key + ':open'))) this.open(true);
@@ -2328,7 +2343,7 @@ W.reset = function () {
   clearTimeout(this.timer); this.queue = []; this.log = []; this.busy = false;
   this.brain = new Brain(this.cfg, { otherNames: this.o.otherNames });
   ssDel(this.key);
-  this.pushBot({ text: this.brain.welcome(), cards: [], chips: [] }, true);
+  this.pushBot({ text: this.brain.welcome(), cards: [], chips: this.brain.welcomeChips() }, true);
   this.renderAll();
 };
 W.submit = function () {
@@ -2338,10 +2353,20 @@ W.submit = function () {
   this.sendText(v, false);
   var b = this.sendBtn; b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin');
 };
+W.markSeen = function (entry) {
+  var self = this;
+  setTimeout(function () {
+    if (entry.st === 'seen') return;
+    entry.st = 'seen'; self.save();
+    var users = self.body.querySelectorAll('.row.user'), idx = self.log.filter(function (e) { return e.who === 'user'; }).indexOf(entry);
+    var t = users[idx] && users[idx].querySelector('.tick'); if (t) { t.classList.add('two'); t.setAttribute('aria-label', 'Seen'); }
+  }, 1000);
+};
 W.sendText = function (text, tap) {
-  this.log.push({ who: 'user', text: text, t: Date.now(), st: 'sent' });
+  var entry = { who: 'user', text: text, t: Date.now(), st: 'sent' };
+  this.log.push(entry);
   this.queue.push({ text: text });
-  this.renderAll(); this.save();
+  this.renderAll(); this.save(); this.markSeen(entry);
   this.arm(tap ? this.TAP : this.DELAY);
 };
 W.sendAction = function (action, label) {
@@ -2428,7 +2453,7 @@ W.renderAll = function () {
   var lastUser = -1; this.log.forEach(function (e, i) { if (e.who === 'user') lastUser = i; });
   this.log.forEach(function (e, i) {
     if (e.who === 'user') {
-      h += '<div class="row user' + (i >= seenN ? ' anim' : '') + '"><div class="bub">' + fmtMsg(e.text) + '</div><div class="meta">' + clock(e.t) + (i === lastUser ? (e.st === 'seen' ? ' · <span class="seen">✓✓ Seen</span>' : ' · ✓') : '') + '</div></div>';
+      h += '<div class="row user' + (i >= seenN ? ' anim' : '') + '"><div class="bub">' + fmtMsg(e.text) + '</div><div class="meta">' + clock(e.t) + ' <span class="tick' + (e.st === 'seen' ? ' two' : '') + (i >= seenN ? ' draw' : '') + '" aria-label="' + (e.st === 'seen' ? 'Seen' : 'Sent') + '"><svg viewBox="0 0 18 12" width="16" height="11" aria-hidden="true"><path class="t1" d="M1 6.5l3.2 3.2L10.5 2.5"/><path class="t2" d="M6.6 9.6l.8.8L14.6 2.5"/></svg></span></div></div>';
       return;
     }
     h += '<div class="row bot' + (i >= seenN ? ' anim' : '') + '">' + (e.text ? '<div class="bub">' + fmtMsg(e.text) + '</div>' : '');
@@ -2437,6 +2462,7 @@ W.renderAll = function () {
     h += '<div class="meta">' + clock(e.t) + '</div></div>';
   });
   this.body.innerHTML = h;
+  var lb = this.log[lastBot], qr = this.sh.querySelector('.quick'); if (qr) qr.style.display = lb && lb.chips && lb.chips.length && !this.busy ? 'none' : '';
   this._shown = this.log.length;
   if (this.busy) this.typing(true);
   this.scroll();
