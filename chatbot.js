@@ -134,13 +134,14 @@ var EVENT_RE = /\b(private (event|party|function|area|space)|buyout|buy out|rent
 /* allergen codes used in niches.js */
 var ALLERGENS = { G: 'gluten', D: 'dairy', E: 'egg', N: 'tree nuts', P: 'peanuts', S: 'soy', SE: 'sesame', F: 'fish', SH: 'shellfish' };
 var ALLERGEN_WORDS = [[/\bpeanuts?\b/, ['P']], [/\b(tree nuts?|nuts?|almonds?|cashews?|walnuts?|pistachios?|pecans?|hazelnuts?)\b/, ['N', 'P']], [/\b(dairy|milk|lactose|cheese|butter|cream)\b/, ['D']], [/\b(gluten|wheat|celiac|coeliac)\b/, ['G']], [/\beggs?\b/, ['E']], [/\b(soy|soya)\b/, ['S']], [/\bsesame\b/, ['SE']], [/\b(shellfish|shrimp|prawns?|crab|lobster)\b/, ['SH']], [/\bfish\b/, ['F']]];
-var TAG_LABEL = { v: 'Vegetarian', vg: 'Vegan', h: 'Halal', s: 'Spicy', gf: 'Gluten-free', pop: 'Popular', k: 'Kids', new: 'New' };
+var TAG_LABEL = { v: 'Vegetarian', vg: 'Vegan', h: 'Halal', s: 'Spicy', s2: 'Very spicy', gf: 'Gluten-free', pop: 'Popular', k: 'Kids', new: 'New', alc: '21+', nuts: 'Contains nuts', dairy: 'Dairy' };
 var SEAT_LABEL = { indoor: 'Indoor', outdoor: 'Outdoor', booth: 'Booth', window: 'Window table', bar: 'Bar / counter', private: 'Private dining room', any: 'No preference' };
 
 /* ═══════════════════════ 3. MENU INDEX ═══════════════════════ */
 function slug(s) { return deacc(String(s).toLowerCase()).replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); }
 function buildMenu(cfg) {
   var items = [], byId = {}, phrases = new Map(), cats = [];
+  var cuisineWords = new Set(words(Object.keys(cfg.sections || {}).join(' ')));
   function add(p, id, explicit) {
     var k = words(p).map(stem).join(' ');
     if (!k) return;
@@ -163,8 +164,8 @@ function buildMenu(cfg) {
       var w = words(it.name).map(stem);
       if (w.length > 1) {
         var head = w[w.length - 1];
-        if (!GENERIC_HEADS.has(head) && head.length > 2 && !/^\d/.test(head)) add(head, it.id, false);
-        add(w.slice(1).join(' '), it.id, false);
+        if (!GENERIC_HEADS.has(head) && !cuisineWords.has(head) && head.length > 2 && !/^\d/.test(head)) add(head, it.id, false);
+        var tail = w.slice(1).join(' '); if (w.length > 2 || (!GENERIC_HEADS.has(tail) && !cuisineWords.has(tail))) add(tail, it.id, false);
         if (w.length > 2) add(w.slice(-2).join(' '), it.id, false);
       }
     });
@@ -313,6 +314,18 @@ function Brain(cfg, opts) {
   (cfg.faqs || []).forEach(function (f, i) { self.topics.push({ id: 'faq:' + i, alts: parseKw(f[0]), answer: f[1], kind: 'faq', bonus: 0.5 }); });
   this.menu.cats.forEach(function (c) { self.topics[self.topics.findIndex(function (t) { return t.id === 'menu'; })].alts.push({ w: words(c).filter(function (w) { return w !== 'and'; }).map(stem), weak: false, cat: c }); });
   this.lastSeat = (cfg.reservations && cfg.reservations.last) || 60;
+  // cuisine sections (one venue, many kitchens): phrase → menu category
+  this.sections = [];
+  var menuTopic = this.topics.filter(function (t) { return t.id === 'menu'; })[0];
+  Object.keys(cfg.sections || {}).forEach(function (cat) {
+    (cat.toLowerCase() + '|' + cfg.sections[cat]).split('|').forEach(function (p) {
+      var w = words(p).filter(function (x) { return x !== 'and' && x !== 'food'; });
+      if (!w.length) return;
+      self.sections.push({ cat: cat, w: w.join(' ') });
+      menuTopic.alts.push({ w: w.map(stem), weak: false, cat: cat });
+    });
+  });
+  this.sections.sort(function (a, b) { return b.w.length - a.w.length; });
 }
 var B = Brain.prototype;
 
@@ -699,6 +712,8 @@ B.analyze = function (cl, S) {
   c.allergens = uniq(c.allergens);
   c.allergy = /\b(allerg\w*|intoleran\w*|anaphyla\w*|epipen|celiac|coeliac)\b/.test(t) || (c.allergens.length > 0 && /\b(free|contain|contains|safe|without|traces?|cross contamination|have any)\b/.test(t) && !(c.allergens.length === 1 && c.allergens[0] === 'G' && !c.mentions.length && !c.unknown.length));
   c.avail = /\b(free|available|availability|openings?|slots?|fully booked|booked up|any (tables?|space|room|spots?)|what times?|which times?)\b/.test(t) && !c.allergens.length && !/\b(free (delivery|dessert|wifi|wi fi|parking|refill|refills|drink|meal|food|item|cake|coffee)|gluten free|sugar free|dairy free|nut free|feel free|free of charge|hands free)\b/.test(t) && (!!c.date || !!c.period || /\b(table|tables|tonight|slot|slots|spots?|weekend|reservation|what times?|which times?|openings?)\b/.test(t));
+  c.section = this.detectSection(t);
+  c.spiceNote = /\b(extra|more|very|super|less|not too|not so|medium|mild|no) (spicy|spice|hot)\b|\b(make it|make them|make that|make the \w+( \w+)?) (mild|medium|hot)\b|\b(mild|medium) please\b/.test(t) ? (/\b(less|not too|not so|mild|no)\b/.test(t) ? 'Mild' : /\bmedium\b/.test(t) ? 'Medium' : 'Extra spicy') : null;
   c.topic = this.scoreTopic(c);
   c.gib = this.isGib(c);
   c.hasEnt = !!(c.date || c.time || c.guests || c.ops.length || c.seating || c.zips.length || c.mode || c.size || c.flavor);
@@ -933,7 +948,7 @@ B.zone = function (zip) { var zs = (this.cfg.delivery && this.cfg.delivery.zones
 B.allZips = function () { var out = []; ((this.cfg.delivery && this.cfg.delivery.zones) || []).forEach(function (z) { out = out.concat(z.zips); }); return out; };
 B.totals = function () {
   var F = this.state.flows.order; if (!F) return null;
-  var self = this, lines = F.items.map(function (l) { var it = self.menu.byId[l.id]; return { id: l.id, name: it.name, qty: l.qty, price: it.price, total: Math.round(it.price * l.qty * 100) / 100 }; });
+  var self = this, lines = F.items.map(function (l) { var it = self.menu.byId[l.id]; return { id: l.id, name: it.name, qty: l.qty, price: it.price, note: l.note || '', total: Math.round(it.price * l.qty * 100) / 100 }; });
   var sub = lines.reduce(function (s, l) { return s + l.total; }, 0), tax = Math.round(sub * (this.cfg.tax || 0) * 100) / 100;
   var z = F.mode === 'delivery' && F.zip ? this.zone(F.zip) : null, fee = z ? z.fee : 0;
   return { lines: lines, subtotal: sub, tax: tax, fee: fee, total: Math.round((sub + tax + fee) * 100) / 100, zone: z, mode: F.mode };
@@ -1139,6 +1154,10 @@ B.applyOps = function (ops, R) {
       if (op.type === 'swapOut') T.swapQty = line.qty;
       if (q == null || q >= line.qty || op.type === 'swapOut') { F.items.splice(idx, 1); T.removed.push([null, it]); }
       else { line.qty -= q; T.removed.push([q, it]); }
+    } else if (op.type === 'note') {
+      if (!line) { F.items.push({ id: id, qty: 1, note: op.note }); T.added.push([1, it]); }
+      else line.note = op.note;
+      T.notes.push([op.note, it]);
     } else if (op.type === 'set') {
       if (q == null) q = 1;
       if (q === 0) { if (line) { F.items.splice(idx, 1); T.removed.push([null, it]); } return; }
@@ -1290,6 +1309,7 @@ B.composeAcks = function (R) {
     if (S.flows.order && S.flows.order.items.length) R.card(this.cartCard());
     else if (S.flows.order) acks.push('Your cart is empty now — what would you like instead?');
   }
+  if (T.notes.length) { acks.push(joinList(T.notes.map(function (x) { return 'your ' + x[1].name + ' will be ' + (x[0] === 'Mild' ? 'made mild' : x[0] === 'Medium' ? 'medium-spicy' : 'extra spicy 🌶️'); })).replace(/^y/, 'Got it — y') + '.'); if (!T.added.length && !T.removed.length && !T.updated.length && S.flows.order) R.card(this.cartCard()); }
   if (T.notIn.length) acks.push("There's no " + joinList(T.notIn.map(function (i) { return i.name; }), 'or') + ' in your order right now.');
   if (T.ambig.length) {
     var op = T.ambig[0], items = op.ids.map(function (id) { return self.menu.byId[id]; });
@@ -1435,7 +1455,13 @@ B.itemsOf = function (c) {
   if (!ids.length && /\b(it|that|this|them|they)\b/.test(c.text) && this.state.lastItem) ids = [this.state.lastItem];
   return uniq(ids).map(function (id) { return self.menu.byId[id]; }).filter(Boolean);
 };
-B.menuCard = function (title, items) { return { type: 'menu', title: title, items: items.map(function (i) { return { id: i.id, name: i.name, price: i.price, desc: i.desc, tags: i.tags }; }) }; };
+B.menuCard = function (title, items) { return { type: 'menu', title: title, items: items.map(function (i) { var tags = i.tags.slice(); if (i.al.indexOf('N') >= 0 || i.al.indexOf('P') >= 0) tags.push('nuts'); if (i.al.indexOf('D') >= 0) tags.push('dairy'); return { id: i.id, name: i.name, price: i.price, desc: i.desc, tags: tags }; }) }; };
+B.detectSection = function (t) {
+  var x = ' ' + t + ' ';
+  for (var i = 0; i < this.sections.length; i++) if (x.indexOf(' ' + this.sections[i].w + ' ') >= 0 || x.indexOf(' ' + this.sections[i].w + 's ') >= 0) return this.sections[i].cat;
+  return null;
+};
+B.inSection = function (list, c) { if (!c.section) return list; var f = list.filter(function (i) { return i.cat === c.section; }); return f.length ? f : list; };
 B.answer = function (tp, c, R) {
   var id = tp.t.id, cfg = this.cfg, S = this.state, self = this, items = this.itemsOf(c), d = cfg.delivery || {};
   if (tp.t.kind === 'faq') { R.say(this.fill(tp.t.answer)); return; }
@@ -1477,7 +1503,7 @@ B.answer = function (tp, c, R) {
     case 'deliveryTime': R.say('Delivery usually takes ' + d.time + ', and pickup orders are ready in about ' + d.pickup + '.'); return;
     case 'pickup': R.say('Pickup is easy — orders are usually ready in about ' + d.pickup + ", and you'll find us at " + cfg.street + '.' + (S.flows.order ? '' : ' Want me to start a pickup order?')); if (!S.flows.order) R.chips = [{ label: 'Start a pickup order', text: 'I want to order for pickup' }]; return;
     case 'seating': R.say(this.fill(cfg.seating.text)); return;
-    case 'kids': { R.say(this.fill(cfg.kids)); var k = this.menu.items.filter(function (i) { return i.tags.indexOf('k') >= 0; }); if (k.length) R.card(this.menuCard('Kids menu', k)); return; }
+    case 'kids': { if (/\b(vegan|vegetarian|veg|veggie|plant based)\b/.test(c.text)) return this.answer({ t: { id: 'veg', kind: 'topic' } }, c, R); R.say(this.fill(cfg.kids)); var k = this.menu.items.filter(function (i) { return i.tags.indexOf('k') >= 0; }); if (k.length) R.card(this.menuCard('Kids menu', k)); return; }
     case 'privateEvents': R.say(this.fill(cfg.privateEvents)); if (!S.flows.event) R.chips = [{ label: 'Plan a private event', text: 'I want to plan a private event' }]; return;
     case 'reservationInfo':
       if (!cfg.reservations) { R.say(this.fill(cfg.noReserve)); R.chips = [{ label: 'Get a catering quote', text: 'catering quote' }]; return; }
@@ -1495,8 +1521,15 @@ B.answer = function (tp, c, R) {
       return;
     }
     case 'veg': {
-      var vegan = /\b(vegan|plant based)\b/.test(c.text);
-      var list = this.menu.items.filter(function (i) { return vegan ? i.tags.indexOf('vg') >= 0 : (i.tags.indexOf('v') >= 0 || i.tags.indexOf('vg') >= 0); });
+      var vegan = /\b(vegan|plant based)\b/.test(c.text), forKids = /\b(kid|kids|child|children|toddler|little one|little ones)\b/.test(c.text);
+      var list = this.inSection(this.menu.items.filter(function (i) { return vegan ? i.tags.indexOf('vg') >= 0 : (i.tags.indexOf('v') >= 0 || i.tags.indexOf('vg') >= 0); }), c);
+      if (forKids && !items.length) {
+        var kl = list.filter(function (i) { return i.tags.indexOf('s') < 0 && !/bar|drink|coffee/i.test(i.cat) && (i.tags.indexOf('k') >= 0 || /kids|dessert|bakery|italian|american|japanese|thai|indian|mexican|middle/i.test(i.cat)); });
+        kl.sort(function (a, b) { return (b.tags.indexOf('k') >= 0) - (a.tags.indexOf('k') >= 0); });
+        R.say(vegan ? 'Here are vegan dishes kids usually love — all mild, no spice. Our kitchen can also make kids portions of most of them.' : 'Here are vegetarian dishes kids usually love — all mild, no spice. We can do half portions of most of them, too.');
+        if (kl.length) R.card(this.menuCard(vegan ? 'Vegan picks for kids' : 'Veggie picks for kids', kl.slice(0, 6)));
+        return;
+      }
       if (items.length) { var iv = items[0]; R.say(iv.tags.indexOf('vg') >= 0 ? 'Yes — our ' + iv.name + ' is vegan! 🌱' : iv.tags.indexOf('v') >= 0 ? 'Our ' + iv.name + ' is vegetarian' + (vegan ? ' (but not vegan — it contains dairy or egg).' : '. 🌱') : 'Our ' + iv.name + " isn't vegetarian, I'm afraid." + (list.length ? ' Try the ' + list[0].name + ' instead!' : '')); return; }
       R.say(this.fill(cfg.veg));
       if (list.length) R.card(this.menuCard(vegan ? 'Vegan picks' : 'Vegetarian picks', list.slice(0, 8)));
@@ -1505,15 +1538,23 @@ B.answer = function (tp, c, R) {
     case 'gf': { var g = this.menu.items.filter(function (i) { return i.tags.indexOf('gf') >= 0; }); R.say(this.fill(cfg.glutenFree) + ' ' + this.fill("Our kitchen does handle wheat flour, so please let our staff know so the kitchen can take care.")); if (g.length) R.card(this.menuCard('Gluten-free picks', g.slice(0, 8))); return; }
     case 'spicy': {
       if (items.length) { var is = items[0]; R.say(is.tags.indexOf('s') >= 0 ? 'Yes — our ' + is.name + ' has a good kick 🌶️. ' + this.fill(cfg.spice) : 'Our ' + is.name + ' is on the mild side. ' + this.fill(cfg.spice)); return; }
-      R.say(this.fill(cfg.spice)); return;
+      var sp = this.inSection(this.menu.items.filter(function (i) { return i.tags.indexOf('s') >= 0; }), c);
+      if (!c.section) { var seen = {}, rr = [], rest = []; sp.forEach(function (i) { if (!seen[i.cat] && (i.tags.indexOf('s2') >= 0 || i.tags.indexOf('pop') >= 0)) { seen[i.cat] = 1; rr.push(i); } else rest.push(i); }); sp = rr.concat(rest); }
+      var hot = sp.filter(function (i) { return i.tags.indexOf('s2') >= 0; });
+      R.say((c.section ? 'In our ' + c.section + ' section, the spicy dishes are the ' : 'Our spicy dishes include the ') + joinList(sp.slice(0, 6).map(function (i) { return i.name + (i.tags.indexOf('s2') >= 0 ? ' 🌶️🌶️' : ''); })) + '. ' + (sp.slice(0, 6).some(function (i) { return i.tags.indexOf('s2') >= 0; }) ? 'The 🌶️🌶️ ones are the hottest. ' : '') + this.fill(cfg.spice));
+      if (sp.length) R.card(this.menuCard('Spicy picks', sp.slice(0, 6)));
+      return;
     }
-    case 'best': { var sig = this.signature(); R.say(this.fill(cfg.best || ('Our guests\' favorites are the ' + joinList(sig.map(function (i) { return i.name; })) + '.'))); R.card(this.menuCard('Guest favorites', sig)); return; }
+    case 'best': {
+      if (c.section) { var pop = this.menu.items.filter(function (i) { return i.cat === c.section; }); var p2 = pop.filter(function (i) { return i.tags.indexOf('pop') >= 0; }); pop = uniq(p2.concat(pop)).slice(0, 3); R.say('In our ' + c.section + ' section, the best sellers are the ' + joinList(pop.map(function (i) { return i.name; })) + (p2.length === 1 ? ' — the ' + p2[0].name + ' is the most popular.' : '.')); R.card(this.menuCard(c.section + ' favorites', pop)); return; }
+      var sig = this.signature(); R.say(this.fill(cfg.best || ('Our guests\' favorites are the ' + joinList(sig.map(function (i) { return i.name; })) + '.'))); R.card(this.menuCard('Guest favorites', sig)); return; }
     case 'deals': { var dl = this.menu.items.filter(function (i) { return /deal|combo|special|bundle|platter|feast|set/i.test(i.cat); }); R.say(this.fill(cfg.dealsText || 'Here are our current deals and combos:')); if (dl.length) R.card(this.menuCard('Deals & combos', dl)); return; }
-    case 'menu': return this.showMenu(tp.cat, R);
+    case 'menu': if (c.mentions.length && (c.q || /\b(have|got|serve|sell)\b/.test(c.text))) return this.answerItemExists(c, R); return this.showMenu(tp.cat, R);
     case 'price': {
       if (items.length) { R.say(cap(joinList(items.slice(0, 4).map(function (i) { return 'the ' + i.name + ' is ' + money(i.price); }))) + '.'); R.card(this.menuCard('', items.slice(0, 4))); return; }
-      var ps = this.menu.items.filter(function (i) { return !/drink|beverage|dessert|side|kid|bread|extra/i.test(i.cat); }).map(function (i) { return i.price; });
-      R.say('Most of our dishes run ' + money(Math.min.apply(null, ps)) + '–' + money(Math.max.apply(null, ps)) + ', plus tax. Want to see the full menu?'); R.chips = [{ label: 'Show menu', text: 'Menu' }];
+      var ps = this.inSection(this.menu.items.filter(function (i) { return !/drink|beverage|dessert|side|kid|bread|extra|bar/i.test(i.cat) || c.section === i.cat; }), c).map(function (i) { return i.price; });
+      R.say((c.section ? 'Dishes in our ' + c.section + ' section run ' : 'Most of our dishes run ') + money(Math.min.apply(null, ps)) + '–' + money(Math.max.apply(null, ps)) + ', plus tax. Want to see the menu?');
+      if (c.section) { R.card(this.menuCard(c.section, this.menu.items.filter(function (i) { return i.cat === c.section; }))); return; } R.chips = [{ label: 'Show menu', text: 'Menu' }];
       return;
     }
     case 'itemInfo': {
@@ -1584,7 +1625,7 @@ B.answerAllergy = function (cls, R) {
     items = safe;
   }
   if (!items.length && !al.length) parts.push('Just let me know which dish or allergen you\'re asking about and I\'ll share what\'s in it.');
-  parts.push(this.fill('Our kitchen handles common allergens' + (cfg.allergens ? ' like ' + cfg.allergens : '') + ", please let our staff know so the kitchen can take care — we can't guarantee any dish is completely allergen-free."));
+  parts.push(this.fill('Our kitchen handles common allergens' + (cfg.allergens ? ' like ' + cfg.allergens : '') + " — please let our staff know so the kitchen can take care. We can't guarantee any dish is completely allergen-free."));
   R.say(parts.join(' '));
   if (items.length) R.card(this.menuCard('', items.slice(0, 4)));
 };
@@ -1614,7 +1655,7 @@ var ADDR_RE = /\b\d{1,5}[a-z]?\s+(?:[A-Za-z0-9.'-]+\s+){0,4}(?:st|street|ave|ave
 
 B.handle = function (batch, now) {
   this.now = now || new Date();
-  this.T = { started: [], set: {}, changed: [], added: [], removed: [], updated: [], notIn: [], ambig: [], contact: [], loose: {}, anySet: false };
+  this.T = { started: [], set: {}, changed: [], added: [], removed: [], updated: [], notes: [], notIn: [], ambig: [], contact: [], loose: {}, anySet: false };
   var R = new Reply(this), self = this, texts = [];
   /* ─────────────────────────── CLAUDE API HOOK ───────────────────────────
    * To use Claude instead of (or on top of) this rule engine, send the batched
@@ -1766,7 +1807,8 @@ B.understand = function (raw, R) {
   });
   cls.forEach(function (c) {
     if (c.used) return;
-    c.opsOK = c.ops.length > 0 && (!c.q || c.reqQ || /\b(add|remove|delete|drop|make|change|swap|replace|take off|another|more)\b/.test(c.text)) && c.ctx !== 'cake' && c.ctx !== 'catering' && !(aw.field === 'interests' && !c.flowKw) && !(S.flows.cake && /^(flavor|size|message)$/.test(aw.field || '') && !c.flowKw) && !c.allergy;
+    var hardVerb = /\b(add|remove|delete|drop|make|change|swap|replace|take off|another|more|want|get|order|give|need|have)\b/.test(c.text) || c.ops.some(function (o) { return o.explicitQty; });
+    c.opsOK = c.ops.length > 0 && !(c.topic && !hardVerb) && (!c.q || c.reqQ || /\b(add|remove|delete|drop|make|change|swap|replace|take off|another|more)\b/.test(c.text)) && c.ctx !== 'cake' && c.ctx !== 'catering' && !(aw.field === 'interests' && !c.flowKw) && !(S.flows.cake && /^(flavor|size|message)$/.test(aw.field || '') && !c.flowKw) && !c.allergy;
     if (c.opsOK && c.ops.every(function (o) { return o.type === 'remove' || o.type === 'swapOut'; }) && !S.flows.order) { c.opsOK = false; T.notIn = T.notIn.concat(c.ops.map(function (o) { return self.menu.byId[o.ids[0]]; })); understood = true; }
     if (c.opsOK && !S.flows.order) { self.start('order'); c.started = c.started || 'order'; }
   });
@@ -1835,7 +1877,9 @@ B.understand = function (raw, R) {
       }
       if (quoted && S.flows.cake.message == null && (/\b(write|say|says|saying|message|on it|on top)\b/.test(c.text) || aw.field === 'message')) { self.setF('cake', 'message', quoted[1].trim()); understood = true; }
     }
+    if (c.opsOK && c.spiceNote) c.ops.forEach(function (o) { if (o.type === 'set' || (o.type === 'add' && !o.explicitQty && S.flows.order && S.flows.order.items.some(function (l) { return o.ids.length === 1 && l.id === o.ids[0]; }))) { o.type = 'note'; o.note = c.spiceNote; } });
     if (c.opsOK) { self.applyOps(c.ops, R); understood = true; }
+    if (c.opsOK && c.spiceNote) c.ops.forEach(function (o) { if (o.type === 'add' && o.ids.length === 1) { var ln = S.flows.order.items.filter(function (l) { return l.id === o.ids[0]; })[0]; if (ln) ln.note = c.spiceNote; } });
   });
 
   // 3) contact details
@@ -1915,7 +1959,9 @@ B.understand = function (raw, R) {
     var tp = c.topic;
     if (tp) {
       var id = tp.t.id;
-      var ok = c.q || tp.score >= 2 || (c.stems.length <= 3 && !c.hasEnt && !c.started && !aw.field);
+      var freeText = /^(name|address|note|message|interests|eventType|occasion|budget)$/.test(aw.field || '');
+      var ok = c.q || tp.score >= 2 || (c.stems.length <= 5 && !c.hasEnt && !c.started && !freeText);
+      if (c.opsOK && !c.q) ok = false;
       if (tp.t.flow && c.started === tp.t.flow) ok = false;
       if (id === 'reservationInfo' && (c.started || !c.q && S.flows.reserve)) ok = false;
       if (id === 'contact' && /^(phone|email|both|contactPref)$/.test(aw.field || '')) ok = false;
@@ -2297,13 +2343,13 @@ W.renderCard = function (c, live) {
   if (c.type === 'menu') {
     h += '<div class="card menu">' + (c.title ? '<div class="ct">' + esc(c.title) + '</div>' : '');
     c.items.forEach(function (i) {
-      var tags = (i.tags || []).filter(function (t) { return TAG_LABEL[t] && t !== 'k'; }).map(function (t) { return '<span class="tag ' + t + '">' + (t === 's' ? '🌶 ' : '') + TAG_LABEL[t] + '</span>'; }).join('');
+      var tags = (i.tags || []).filter(function (t) { return TAG_LABEL[t] && t !== 'k'; }).map(function (t) { return '<span class="tag ' + t + '">' + (t === 's' ? '🌶 ' : t === 's2' ? '🌶🌶 ' : '') + TAG_LABEL[t] + '</span>'; }).join('');
       h += '<div class="mi"><div class="mn">' + esc(i.name) + (tags ? '<div class="tags">' + tags + '</div>' : '') + '</div><div class="mp">' + money(i.price) + '</div><div class="md">' + esc(i.desc) + '</div><button class="add" data-a="' + A({ type: 'add', id: i.id, qty: 1 }) + '" data-l="' + esc('Add ' + i.name) + '">Add</button></div>';
     });
     return h + '</div>';
   }
   var totals = function (x) { return '<div class="tot"><div><span>Subtotal</span><span>' + money(x.subtotal) + '</span></div><div><span>Tax</span><span>' + money(x.tax) + '</span></div>' + (x.fee ? '<div><span>Delivery fee</span><span>' + money(x.fee) + '</span></div>' : '') + '<div class="g"><span>Total</span><span>' + money(x.total) + '</span></div></div>'; };
-  var lines = function (ls, btns) { return ls.map(function (l) { return '<div class="cl">' + (btns ? '<span class="q"><button class="qb" aria-label="One less" data-a="' + A({ type: 'remove', id: l.id, qty: 1 }) + '" data-l="' + esc('−1 ' + l.name) + '">−</button><span>' + l.qty + '</span><button class="qb" aria-label="One more" data-a="' + A({ type: 'add', id: l.id, qty: 1 }) + '" data-l="' + esc('+1 ' + l.name) + '">+</button></span>' : '<span>' + l.qty + '×</span>') + '<span class="n">' + esc(l.name) + '</span><span class="v">' + money(l.total) + '</span></div>'; }).join(''); };
+  var lines = function (ls, btns) { return ls.map(function (l) { return '<div class="cl">' + (btns ? '<span class="q"><button class="qb" aria-label="One less" data-a="' + A({ type: 'remove', id: l.id, qty: 1 }) + '" data-l="' + esc('−1 ' + l.name) + '">−</button><span>' + l.qty + '</span><button class="qb" aria-label="One more" data-a="' + A({ type: 'add', id: l.id, qty: 1 }) + '" data-l="' + esc('+1 ' + l.name) + '">+</button></span>' : '<span>' + l.qty + '×</span>') + '<span class="n">' + esc(l.name) + (l.note ? '<span class="note">' + esc(l.note) + '</span>' : '') + '</span><span class="v">' + money(l.total) + '</span></div>'; }).join(''); };
   if (c.type === 'cart') return '<div class="card cart"><div class="ct"><span>' + esc(c.title) + '</span></div>' + lines(c.lines, live) + totals(c) + '</div>';
   var rows = function (rs) { return '<dl class="rows">' + rs.map(function (r) { return '<dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd>'; }).join('') + '</dl>'; };
   if (c.type === 'summary') {
