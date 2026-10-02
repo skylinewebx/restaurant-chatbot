@@ -1,5 +1,5 @@
 /*!
- * Food & Restaurant AI Chatbot — one engine, one config per niche (niches.js)
+ * Restaurant Chatbot — one engine, one config per niche (niches.js)
  * Skyline Web Co
  *
  * Demo page:   index.html?niche=desi&name=My%20Place&city=Chicago&phone=(312)%20555-0100
@@ -14,7 +14,7 @@
 (function (root, factory) {
   var api = factory(root);
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else { root.FoodChatbot = api; if (typeof document !== 'undefined') api._autoInit(); }
+  else { root.RestaurantChatbot = api; if (typeof document !== 'undefined') api._autoInit(); }
 })(typeof window !== 'undefined' ? window : globalThis, function (root) {
 'use strict';
 
@@ -1609,6 +1609,12 @@ B.showMenu = function (cat, R) {
     var line = /deals/i.test(cat) ? 'Here are our deals & combos' : /^drinks$/i.test(cat) ? 'Here are our drinks' : "Here's our " + (/^(kids|bar)$/i.test(cat) ? cat.toLowerCase() : cat) + ' menu';
     R.say(line + (EMO[cat] ? ' ' + EMO[cat] : ''));
     R.card(this.menuCard('', its));
+  } else if (this.cfg.featuredMenu) {
+    R.say("Here's our menu 🍽️");
+    this.cfg.featuredMenu.forEach(function (g) {
+      var list = g[1].map(function (e) { var a = [].concat(e), it = self.menu.byId[slug(a[1] || a[0])]; return it ? Object.assign({}, it, { name: a[0] }) : null; }).filter(Boolean);
+      R.card(self.menuCard(g[0], list));
+    });
   } else {
     R.say("Here's our menu 🍽️");
     this.menu.cats.forEach(function (c) { R.card(self.menuCard(c, self.menu.items.filter(function (i) { return i.cat === c; }))); });
@@ -2083,6 +2089,9 @@ B.understand = function (raw, R) {
       else this.showMenu(null, R);
       this.next(R); return;
     }
+    var kw = plain.toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter(function (w) { return (w.length > 3 && !COMMON.has(w)) || /^(cheese|chicken|beef|lamb|fish|rice|egg|eggs|pasta|bread|soup|salad|steak|pork|tofu|shrimp|mushroom|chocolate|cream)$/.test(w); });
+    var hits = kw.length ? this.menu.items.filter(function (i) { var hay = (i.name + ' ' + i.desc).toLowerCase(); return kw.some(function (w) { return new RegExp('\\b' + w.replace(/s$/, '') + 's?\\b').test(hay); }) && i.tags.indexOf('alc') < 0; }) : [];
+    if (hits.length) { R.say('Here are our dishes with ' + kw[0] + ':'); R.card(this.menuCard('', hits.slice(0, 10))); T.menuChips = true; this.next(R); return; }
     R.scoped = true; T.noNext = true; return;
   }
   this.next(R);
@@ -2142,7 +2151,7 @@ function ssDel(k) { try { root.sessionStorage.removeItem(k); } catch (e) { } }
 
 /* owner inbox (demo): confirmed bookings/orders are stored per niche in localStorage */
 var Owner = {
-  key: function (id) { return 'foodchat:owner:' + id; },
+  key: function (id) { return 'restaurantchat:owner:' + id; },
   list: function (id) { return lsGet(Owner.key(id)) || []; },
   add: function (id, rec) { var l = Owner.list(id); l.unshift(rec); lsSet(Owner.key(id), l.slice(0, 200)); },
   cancel: function (id, ref) { var l = Owner.list(id); l.forEach(function (r) { if (r.ref === ref) r.status = 'cancelled'; }); lsSet(Owner.key(id), l); },
@@ -2152,7 +2161,7 @@ function icsText(ics, ref) {
   var s = new Date(ics.start), e = new Date(ics.start + ics.mins * 60000);
   var f = function (d) { return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + pad(d.getHours()) + pad(d.getMinutes()) + '00'; };
   var x = function (t) { return String(t).replace(/([,;\\])/g, '\\$1'); };
-  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Skyline Web Co//Food Chatbot//EN', 'CALSCALE:GREGORIAN', 'BEGIN:VEVENT', 'UID:' + ref + '-' + ics.start + '@foodchat', 'DTSTAMP:' + new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''), 'DTSTART:' + f(s), 'DTEND:' + f(e), 'SUMMARY:' + x(ics.title), 'LOCATION:' + x(ics.location), 'DESCRIPTION:' + x(ics.desc), 'BEGIN:VALARM', 'TRIGGER:-PT2H', 'ACTION:DISPLAY', 'DESCRIPTION:' + x(ics.title), 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Skyline Web Co//Restaurant Chatbot//EN', 'CALSCALE:GREGORIAN', 'BEGIN:VEVENT', 'UID:' + ref + '-' + ics.start + '@restaurantchat', 'DTSTAMP:' + new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''), 'DTSTART:' + f(s), 'DTEND:' + f(e), 'SUMMARY:' + x(ics.title), 'LOCATION:' + x(ics.location), 'DESCRIPTION:' + x(ics.desc), 'BEGIN:VALARM', 'TRIGGER:-PT2H', 'ACTION:DISPLAY', 'DESCRIPTION:' + x(ics.title), 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
 }
 
 var CSS = [
@@ -2258,7 +2267,7 @@ var CSS = [
 function Widget(o) {
   this.o = o;
   this.cfg = resolveConfig(o.base, o);
-  this.key = 'foodchat:' + this.cfg.id + ':' + words(this.cfg.name).join('-');
+  this.key = 'restaurantchat:' + this.cfg.id + ':' + words(this.cfg.name).join('-');
   this.queue = []; this.log = []; this.timer = null; this.busy = false;
   this.DELAY = o.delay != null ? o.delay : 4000; this.TAP = o.tapDelay != null ? o.tapDelay : 1200;
   var saved = ssGet(this.key);
@@ -2268,14 +2277,14 @@ function Widget(o) {
 var W = Widget.prototype;
 W.mount = function () {
   var self = this, cfg = this.cfg, doc = document;
-  if (!doc.getElementById('foodchat-font')) {
-    var l = doc.createElement('link'); l.id = 'foodchat-font'; l.rel = 'stylesheet';
+  if (!doc.getElementById('restaurantchat-font')) {
+    var l = doc.createElement('link'); l.id = 'restaurantchat-font'; l.rel = 'stylesheet';
     l.href = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@600;700&display=swap';
     doc.head.appendChild(l);
   }
   if (!doc.querySelector('meta[name=viewport]')) { var mv = doc.createElement('meta'); mv.name = 'viewport'; mv.content = 'width=device-width, initial-scale=1'; doc.head.appendChild(mv); }
   var host = doc.createElement('div');
-  host.setAttribute('data-foodchat', cfg.id);
+  host.setAttribute('data-restaurantchat', cfg.id);
   host.style.cssText = 'position:fixed;z-index:2147483000;inset:auto;';
   doc.body.appendChild(host);
   var sh = host.attachShadow({ mode: 'open' });
@@ -2387,7 +2396,7 @@ W.flush = function () {
   this.busy = true; this.renderAll();
   var res;
   try { res = this.brain.handle(batch, new Date()); }
-  catch (err) { if (root.console) console.error('[FoodChatbot]', err); res = { bubbles: [{ text: this.brain.fill("Sorry, something went wrong on my side. Could you try that again? You can also call us at {phone}."), cards: [], chips: [] }], events: [] }; }
+  catch (err) { if (root.console) console.error('[RestaurantChatbot]', err); res = { bubbles: [{ text: this.brain.fill("Sorry, something went wrong on my side. Could you try that again? You can also call us at {phone}."), cards: [], chips: [] }], events: [] }; }
   if (!res.bubbles.length) { this.busy = false; this.renderAll(); this.save(); return; }
   var len = res.bubbles.reduce(function (s, b) { return s + (b.text || '').length; }, 0);
   this.typing(true);
@@ -2403,7 +2412,7 @@ W.pushBot = function (b, silent) { this.log.push({ who: 'bot', text: b.text || '
 W.emit = function (ev) {
   var id = this.cfg.id;
   if (ev.cancel) Owner.cancel(id, ev.ref); else Owner.add(id, ev);
-  try { root.dispatchEvent(new CustomEvent('foodchat:record', { detail: ev })); } catch (e) { }
+  try { root.dispatchEvent(new CustomEvent('restaurantchat:record', { detail: ev })); } catch (e) { }
   if (this.o.webhook) { try { fetch(this.o.webhook, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ev) }); } catch (e) { } }
   if (typeof this.o.onRecord === 'function') this.o.onRecord(ev);
 };
@@ -2487,9 +2496,9 @@ W.onBodyClick = function (e) {
 
 /* ═══════════════════════ 7. PUBLIC API ═══════════════════════ */
 function mount(o) {
-  var N = root.FOOD_NICHES || {};
+  var N = root.RESTAURANT_NICHES || {};
   var base = N[o.niche];
-  if (!base) { if (root.console) console.warn('[FoodChatbot] unknown niche:', o.niche); return null; }
+  if (!base) { if (root.console) console.warn('[RestaurantChatbot] unknown niche:', o.niche); return null; }
   var others = Object.keys(N).filter(function (k) { return k !== o.niche; }).map(function (k) { return N[k].name; });
   var w = new Widget({ base: base, name: o.name, city: o.city, phone: o.phone, email: o.email, open: o.open, webhook: o.webhook, onRecord: o.onRecord, otherNames: others, delay: o.delay, tapDelay: o.tapDelay });
   var go = function () { w.mount(); };
@@ -2503,8 +2512,8 @@ function autoInit() {
   var start = function () {
     mount({ niche: s.getAttribute('data-niche'), name: s.getAttribute('data-name'), city: s.getAttribute('data-city'), phone: s.getAttribute('data-phone'), email: s.getAttribute('data-email'), open: s.getAttribute('data-open') === 'true', webhook: s.getAttribute('data-webhook') });
   };
-  if (root.FOOD_NICHES) start();
-  else { var t = document.createElement('script'); t.src = dir + 'niches.js'; t.onload = start; t.onerror = function () { console.warn('[FoodChatbot] could not load niches.js from ' + dir); }; document.head.appendChild(t); }
+  if (root.RESTAURANT_NICHES) start();
+  else { var t = document.createElement('script'); t.src = dir + 'niches.js'; t.onload = start; t.onerror = function () { console.warn('[RestaurantChatbot] could not load niches.js from ' + dir); }; document.head.appendChild(t); }
 }
 
 return { Brain: Brain, resolveConfig: resolveConfig, mount: mount, Widget: Widget, Owner: Owner, icon: icon, patternURI: patternURI, icsText: icsText, _autoInit: autoInit, version: '1.0.0' };

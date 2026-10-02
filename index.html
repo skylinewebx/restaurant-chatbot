@@ -57,16 +57,16 @@
 <script>
 (function () {
   var p = new URLSearchParams(location.search);
-  var N = window.FOOD_NICHES || {};
+  var N = window.RESTAURANT_NICHES || {};
   var id = (p.get('niche') || 'demo').toLowerCase();
   if (!N[id]) id = 'demo';
   var name = p.get('name'), city = p.get('city'), phone = p.get('phone');
-  var cfg = FoodChatbot.resolveConfig(N[id], { name: name, city: city, phone: phone });
+  var cfg = RestaurantChatbot.resolveConfig(N[id], { name: name, city: city, phone: phone });
   var isDemo = id === 'demo';
 
   document.title = isDemo ? cfg.name : cfg.name + ' – AI Assistant';
   document.getElementById('bg').style.background = 'linear-gradient(#FFFFFF, #FFFBF5)';
-  document.getElementById('logo').innerHTML = FoodChatbot.icon(isDemo ? 'plate' : cfg.icon, 34, 1.7);
+  document.getElementById('logo').innerHTML = RestaurantChatbot.icon(isDemo ? 'plate' : cfg.icon, 34, 1.7);
   if (!isDemo) {
     var t = document.getElementById('title'); t.textContent = cfg.name;
     document.getElementById('badge').textContent = cfg.cuisine + ' · ' + cfg.city;
@@ -83,7 +83,7 @@
     ? ['Biryani price?', 'Do you have ramen?', 'Happy hour prices', 'Vegan options for kids', 'Table for 4 Saturday at 8pm', '2 chicken biryani and 1 margherita for pickup']
     : ['Show me the menu', "What's your best dish?", 'Book a table for 2 tomorrow at 7pm', 'Do you deliver to ' + cfg.zip + '?'];
 
-  var w = FoodChatbot.mount({ niche: id, name: name, city: city, phone: phone, open: true });
+  var w = RestaurantChatbot.mount({ niche: id, name: name, city: city, phone: phone, open: true });
   var box = document.getElementById('samples');
   samples.forEach(function (s) {
     var b = document.createElement('button'); b.type = 'button'; b.textContent = s;

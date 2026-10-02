@@ -1,5 +1,5 @@
 /*!
- * niches.js — one config per food & restaurant niche (all businesses are fictional).
+ * niches.js — one config per restaurant niche (all businesses are fictional).
  *
  * Menu item format: [name, price, tags, allergens, description, aliases]
  *   tags:      v vegetarian · vg vegan · h halal · s spicy · gf gluten-free · pop popular · k kids
@@ -51,6 +51,13 @@ N.demo = {
   signature: ['Chicken Biryani', 'Margherita Pizza', 'Spicy Tuna Roll', 'Ribeye (12 oz)', 'Classic Smash Burger'],
   catering: { min: 20, max: 500, lead: 4, text: 'Yes! Our events team caters weddings, office lunches and parties for 20–500 guests with any mix of cuisines, from about $20–$75 per guest.', closing: 'Our events team will send you a quote.', interestsQ: 'Which cuisines would you like on the menu? (e.g. "Desi and Italian", or "chef\'s choice")' },
   noCakes: "We don't bake custom celebration cakes, but you're welcome to bring your own — there's a $2 per guest plating fee.",
+  featuredMenu: [
+    ['Starters', ['Lobster Bisque', ['Beef Carpaccio'], ['Burrata & Heirloom Tomato Salad'], ['Crab Cakes', 'Crab Cakes (2)'], ['Pan-Seared Scallops']]],
+    ['Mains', ['Beef Wellington', ['Filet Mignon', 'Filet Mignon (8 oz)'], ['Ribeye Steak with Peppercorn Sauce', 'Ribeye (12 oz)'], 'Steak Frites', 'Rack of Lamb with Rosemary Jus', 'Pan-Seared Salmon with Lemon Butter', "Duck à l'Orange", 'Chicken Cordon Bleu', 'Coq au Vin', 'Osso Buco', 'Shrimp Scampi', ['Truffle Mushroom Risotto', 'Mushroom Risotto']]],
+    ['Brunch', ['Eggs Benedict', 'Avocado Toast with Poached Eggs']],
+    ['Desserts', [['Crème Brûlée'], 'Tiramisu', 'Panna Cotta', 'Sticky Toffee Pudding', 'New York Cheesecake']],
+    ['Drinks', ['Espresso Martini', 'Fresh Lemonade']]
+  ],
   sections: {
     'Desi': 'desi|pakistani|pakistan|lahori|karahi|nihari|desi food',
     'Indian': 'indian|india|north indian|south indian|dosa|indian food',
@@ -158,6 +165,10 @@ N.demo = {
       ['Beef Lasagna', 21.00, '', 'G D E', 'Fresh pasta, beef ragù, béchamel and mozzarella.', 'lasagna|lasagne'],
       ['Fettuccine Alfredo', 17.00, 'v', 'G D E', 'Fresh fettuccine in butter-parmesan cream.', 'alfredo|fettuccine'],
       ['Mushroom Risotto', 21.00, 'v gf', 'D', 'Carnaroli rice with porcini and parmesan.', 'risotto'],
+      ['Beef Carpaccio', 19.00, 'gf', 'D', 'Thinly sliced raw beef, arugula, parmesan and lemon-olive oil.', 'carpaccio'],
+      ['Burrata & Heirloom Tomato Salad', 17.00, 'v gf', 'D', 'Creamy burrata, heirloom tomatoes, basil and aged balsamic.', 'burrata|burrata salad'],
+      ['Osso Buco', 42.00, 'gf', 'D', 'Braised veal shank with gremolata and saffron risotto.', 'osso buco|ossobuco'],
+      ['Panna Cotta', 9.00, 'v gf', 'D', 'Vanilla panna cotta with berry compote.', 'panna cotta'],
       ['Bruschetta', 9.00, 'vg', 'G', 'Grilled bread with tomato, garlic and basil.', 'bruschetta'],
       ['Garlic Knots (6)', 6.00, 'v', 'G D', 'Pizza-dough knots with garlic butter and parmesan.', 'garlic knots|knots|garlic bread'],
       ['Tiramisu', 9.00, 'v', 'G D E', 'Espresso-soaked ladyfingers with mascarpone.', 'tiramisu']
@@ -167,6 +178,9 @@ N.demo = {
       ['Escargots (6)', 15.00, 'gf', 'D', 'Burgundy snails in garlic-parsley butter.', 'escargots|escargot|snails'],
       ['Steak Frites', 34.00, 'gf pop', 'D', 'Grilled hanger steak, herb butter and crispy fries.', 'steak frites'],
       ['Coq au Vin', 29.00, 'gf', 'D', 'Chicken braised in red wine with mushrooms and bacon.', 'coq au vin'],
+      ['Duck à l\'Orange', 36.00, 'gf', '', 'Roast duck breast with a bittersweet orange sauce.', 'duck a l orange|duck orange|duck a lorange|duck l orange'],
+      ['Chicken Cordon Bleu', 27.00, '', 'G D E', 'Breaded chicken stuffed with ham and gruyère, with Dijon cream.', 'cordon bleu'],
+      ['Beef Wellington', 58.00, 'pop', 'G D E', 'Beef tenderloin with mushroom duxelles and prosciutto in puff pastry.', 'wellington|beef wellington'],
       ['Moules Marinières', 26.00, 'gf', 'SH D', 'Mussels in white wine, garlic and cream, with fries.', 'moules|mussels'],
       ['Duck Confit', 31.00, 'gf', '', 'Crispy duck leg with garlic potatoes and frisée.', 'duck confit|confit'],
       ['Croque Monsieur', 16.00, '', 'G D', 'Ham and gruyère toastie with béchamel.', 'croque|croque monsieur'],
@@ -191,6 +205,7 @@ N.demo = {
       ['Sticky Toffee Pudding', 10.00, 'v', 'G D E', 'Warm date sponge with toffee sauce and custard.', 'sticky toffee|toffee pudding']
     ] },
     { cat: 'Steakhouse', items: [
+      ['Rack of Lamb with Rosemary Jus', 48.00, 'gf', '', 'Herb-crusted rack of lamb with a rosemary red-wine jus.', 'rack of lamb|lamb rack'],
       ['Ribeye (12 oz)', 46.00, 'gf pop', 'D', 'USDA Prime ribeye, char-grilled, with herb butter.', 'ribeye|rib eye'],
       ['Filet Mignon (8 oz)', 52.00, 'gf', 'D', 'The most tender cut, with red wine jus.', 'filet|filet mignon|fillet|tenderloin'],
       ['New York Strip (14 oz)', 48.00, 'gf', 'D', 'Bold, beefy strip loin with peppercorn sauce.', 'strip|ny strip|new york strip|sirloin'],
@@ -255,6 +270,10 @@ N.demo = {
       ['Baklava (4 pc)', 6.99, 'v', 'G N', 'Flaky phyllo with walnuts, pistachios and honey syrup.', 'baklava']
     ] },
     { cat: 'Seafood', items: [
+      ['Lobster Bisque', 14.00, 'gf', 'SH D', 'Velvety Maine lobster soup with cognac cream.', 'bisque|lobster bisque|lobster soup'],
+      ['Pan-Seared Scallops', 34.00, 'gf', 'SH D', 'Sea scallops with cauliflower purée and brown butter.', 'scallops|scallop'],
+      ['Pan-Seared Salmon with Lemon Butter', 31.00, 'gf', 'F D', 'Crispy-skin salmon with lemon butter sauce and greens.', 'pan seared salmon|salmon lemon butter|lemon butter salmon'],
+      ['Shrimp Scampi', 28.00, '', 'SH G D', 'Shrimp in garlic, white wine and lemon butter over linguine.', 'scampi|shrimp scampi'],
       ['Grilled Salmon', 29.00, 'gf pop', 'F', 'Atlantic salmon with lemon-dill sauce and greens.', 'salmon'],
       ['Whole Maine Lobster (1.5 lb)', 54.00, 'gf', 'SH D', 'Steamed lobster with drawn butter, corn and potatoes.', 'lobster|whole lobster'],
       ['Lobster Roll', 32.00, '', 'SH G E D', 'Chilled lobster salad on a buttered roll, with fries.', 'lobster roll'],
@@ -273,6 +292,7 @@ N.demo = {
       ['Matcha Latte', 5.75, 'v gf', 'D', 'Ceremonial matcha with steamed milk.', 'matcha'],
       ['Hot Chocolate', 4.75, 'v gf', 'D', 'Made with real Belgian chocolate.', 'hot chocolate|cocoa'],
       ['Avocado Toast', 13.50, 'vg', 'G', 'Sourdough, smashed avocado, chili flakes and lemon.', 'avocado toast|avo toast'],
+      ['Avocado Toast with Poached Eggs', 16.00, 'v', 'G E', 'Sourdough, smashed avocado and two poached eggs.', 'avocado toast with eggs|avocado toast with poached eggs|avo toast eggs'],
       ['Buttermilk Pancakes', 14.00, 'v', 'G D E', 'Three fluffy pancakes with maple syrup and berries.', 'pancakes|pancake'],
       ['Eggs Benedict', 16.00, '', 'G D E', 'Poached eggs, ham and hollandaise on an English muffin.', 'eggs benedict|benedict'],
       ['Acai Bowl', 12.50, 'vg gf', 'N', 'Acai, banana, granola, berries and almond butter.', 'acai|acai bowl']
@@ -2183,5 +2203,5 @@ N.catering = {
 };
 
 if (typeof module === 'object' && module.exports) module.exports = N;
-else root.FOOD_NICHES = N;
+else root.RESTAURANT_NICHES = N;
 })(typeof window !== 'undefined' ? window : globalThis);
