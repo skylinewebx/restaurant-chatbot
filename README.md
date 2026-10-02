@@ -1,7 +1,7 @@
 # Restaurant Chatbot — Demo Chatbot for Restaurants
 
-- Live demo: https://skylinewebco.github.io/restaurant-chatbot/
-- Repo: https://github.com/skylinewebco/restaurant-chatbot
+- Live demo: https://skylinewebx.github.io/restaurant-chatbot/
+- Repo: https://github.com/skylinewebx/restaurant-chatbot
 
 One AI chat for every type of restaurant. The demo is a single fictional dining venue with a section for each cuisine — Desi, Indian, Chinese, Thai, Japanese & sushi, Italian, French, American & English, steakhouse, BBQ & grill, burgers, Mexican, Middle Eastern, seafood, cafe, bakery & desserts and a bar. Guests can ask about the menu, prices, hours and policies, book a table, order for pickup or delivery, or request a catering quote.
 
@@ -19,15 +19,15 @@ No API key and no build step: replies come from a rule-based intent engine (syno
 
 ## Links
 
-- Demo: `https://skylinewebco.github.io/restaurant-chatbot/`
-- Single-restaurant client page: `https://skylinewebco.github.io/restaurant-chatbot/?niche=desi&name=Lahori%20Tadka&city=Chicago&phone=(312)%20555-0100`
+- Demo: `https://skylinewebx.github.io/restaurant-chatbot/`
+- Single-restaurant client page: `https://skylinewebx.github.io/restaurant-chatbot/?niche=desi&name=Lahori%20Tadka&city=Chicago&phone=(312)%20555-0100`
 
   Niche ids: `desi dhaba indian chinese pizza burgers bbq mexican middleeastern sushi cafe bakery desserts finedining catering`. `name`, `city` and `phone` are optional overrides.
 
 ## Embed on any website
 
 ```html
-<script src="https://skylinewebco.github.io/restaurant-chatbot/chatbot.js" data-niche="demo"></script>
+<script src="https://skylinewebx.github.io/restaurant-chatbot/chatbot.js" data-niche="demo"></script>
 ```
 
 Optional attributes: `data-name`, `data-city`, `data-phone`, `data-open="true"`, `data-webhook="https://…"` (confirmed bookings and orders are POSTed there as JSON).
